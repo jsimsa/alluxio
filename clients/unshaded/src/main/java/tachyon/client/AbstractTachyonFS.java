@@ -24,6 +24,7 @@ import tachyon.conf.TachyonConf;
 /**
  * Abstract implementation of {@link tachyon.client.TachyonFSCore} APIs.
  */
+@Deprecated
 abstract class AbstractTachyonFS implements TachyonFSCore {
   protected final TachyonConf mTachyonConf;
 
@@ -88,7 +89,7 @@ abstract class AbstractTachyonFS implements TachyonFSCore {
    *         place), false otherwise.
    * @throws IOException
    */
-  public synchronized boolean delete(int fid, boolean recursive) throws IOException {
+  public synchronized boolean delete(long fid, boolean recursive) throws IOException {
     return delete(fid, TachyonURI.EMPTY_URI, recursive);
   }
 
@@ -125,7 +126,7 @@ abstract class AbstractTachyonFS implements TachyonFSCore {
    * @return true if succeed, false otherwise
    * @throws IOException
    */
-  public synchronized boolean rename(int fileId, TachyonURI dstPath) throws IOException {
+  public synchronized boolean rename(long fileId, TachyonURI dstPath) throws IOException {
     return rename(fileId, TachyonURI.EMPTY_URI, dstPath);
   }
 
