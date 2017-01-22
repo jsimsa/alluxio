@@ -23,9 +23,10 @@
   <description>Parent POM for different implementations of Alluxio under file system</description>
 
   <modules>
-    <module>local</module>
+    <module>etcd</module>
     <module>hdfs</module>
     <module>glusterfs</module>
+    <module>local</module>
     <module>oss</module>
     <module>swift</module>
     <module>s3</module>

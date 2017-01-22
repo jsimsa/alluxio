@@ -107,8 +107,8 @@ public final class Format {
 
       // A journal folder is thought to be formatted only when a file with the specific name is
       // present under the folder.
-      UnderFileSystemUtils.touch(PathUtils
-          .concatPath(masterJournal, Constants.FORMAT_FILE_PREFIX + System.currentTimeMillis()));
+      UnderFileSystemUtils.touch(PathUtils.concatPath(masterJournal,
+          Configuration.get(PropertyKey.MASTER_FORMAT_FILE_PREFIX) + System.currentTimeMillis()));
     } else if ("WORKER".equalsIgnoreCase(mode)) {
       String workerDataFolder = Configuration.get(PropertyKey.WORKER_DATA_FOLDER);
       int storageLevels = Configuration.getInt(PropertyKey.WORKER_TIERED_STORE_LEVELS);
