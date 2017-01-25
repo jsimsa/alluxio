@@ -18,9 +18,9 @@ import alluxio.Constants;
 import alluxio.PropertyKey;
 import alluxio.PropertyKeyFormat;
 import alluxio.ServerUtils;
-import alluxio.client.block.BlockStoreContextTestUtils;
 import alluxio.client.block.RetryHandlingBlockWorkerClientTestUtils;
 import alluxio.client.file.FileSystem;
+import alluxio.client.file.FileSystemContext;
 import alluxio.client.file.FileSystemWorkerClientTestUtils;
 import alluxio.client.util.ClientTestUtils;
 import alluxio.proxy.AlluxioProxy;
@@ -122,7 +122,7 @@ public abstract class AbstractLocalAlluxioCluster {
     String underfsAddress = Configuration.get(PropertyKey.UNDERFS_ADDRESS);
 
     // Deletes the ufs dir for this test from to avoid permission problems
-    UnderFileSystemUtils.deleteDir(underfsAddress);
+    UnderFileSystemUtils.deleteDirIfExists(underfsAddress);
 
     // Creates ufs dir. This must be called before starting UFS with UnderFileSystemCluster.get().
     UnderFileSystemUtils.mkdirIfNotExists(underfsAddress);
@@ -161,6 +161,7 @@ public abstract class AbstractLocalAlluxioCluster {
     // This must happen after UFS is started with UnderFileSystemCluster.get().
     if (!mUfsCluster.getClass().getName().equals(LocalFileSystemCluster.class.getName())) {
       String ufsAddress = mUfsCluster.getUnderFilesystemAddress() + mWorkDirectory;
+      UnderFileSystemUtils.mkdirIfNotExists(ufsAddress);
       Configuration.set(PropertyKey.UNDERFS_ADDRESS, ufsAddress);
     }
   }
@@ -226,6 +227,7 @@ public abstract class AbstractLocalAlluxioCluster {
     Configuration.set(PropertyKey.MASTER_WORKER_THREADS_MIN, "1");
     Configuration.set(PropertyKey.MASTER_WORKER_THREADS_MAX, "100");
     Configuration.set(PropertyKey.MASTER_STARTUP_CONSISTENCY_CHECK_ENABLED, false);
+    Configuration.set(PropertyKey.MASTER_JOURNAL_FLUSH_TIMEOUT_MS, 1000);
 
     Configuration.set(PropertyKey.MASTER_BIND_HOST, mHostname);
     Configuration.set(PropertyKey.MASTER_WEB_BIND_HOST, mHostname);
@@ -365,7 +367,7 @@ public abstract class AbstractLocalAlluxioCluster {
   protected void resetClientPools() {
     RetryHandlingBlockWorkerClientTestUtils.reset();
     FileSystemWorkerClientTestUtils.reset();
-    BlockStoreContextTestUtils.resetPool();
+    FileSystemContext.INSTANCE.reset();
   }
 
   /**

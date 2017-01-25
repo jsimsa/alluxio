@@ -92,7 +92,6 @@ public final class Constants {
   public static final long META_MASTER_CLIENT_SERVICE_VERSION = 1;
   public static final long KEY_VALUE_MASTER_CLIENT_SERVICE_VERSION = 1;
   public static final long KEY_VALUE_WORKER_SERVICE_VERSION = 1;
-  public static final long FILE_SYSTEM_CLIENT_SERVICE_VERSION = 1;
   public static final long UNKNOWN_SERVICE_VERSION = -1;
 
   public static final String BLOCK_MASTER_NAME = "BlockMaster";
@@ -111,9 +110,8 @@ public final class Constants {
   public static final String FILE_SYSTEM_WORKER_CLIENT_SERVICE_NAME = "FileSystemWorkerClient";
   public static final String KEY_VALUE_MASTER_CLIENT_SERVICE_NAME = "KeyValueMasterClient";
   public static final String KEY_VALUE_WORKER_CLIENT_SERVICE_NAME = "KeyValueWorkerClient";
-  public static final String FILE_SYSTEM_CLIENT_SERVICE_NAME = "FileSystemClient";
 
-  public static final String REST_API_PREFIX = "/v1/api";
+  public static final String REST_API_PREFIX = "/api/v1";
 
   public static final String LOGGER_TYPE = PropertyKey.Name.LOGGER_TYPE;
 
@@ -134,15 +132,19 @@ public final class Constants {
    */
   public static final int THRIFT_STOP_TIMEOUT_SECONDS = 60;
 
-  // ttl related
+  // Time-to-live
   public static final long NO_TTL = -1;
 
   // Security
-  // Security related constant value
   public static final int DEFAULT_FILE_SYSTEM_UMASK = 0022;
   public static final short DEFAULT_FILE_SYSTEM_MODE = (short) 0777;
   public static final short FILE_DIR_PERMISSION_DIFF = (short) 0111;
   public static final short INVALID_MODE = -1;
+
+  // Specific tier write
+  public static final int FIRST_TIER = 0;
+  public static final int SECOND_TIER = 1;
+  public static final int LAST_TIER = -1;
 
   private Constants() {} // prevent instantiation
 }

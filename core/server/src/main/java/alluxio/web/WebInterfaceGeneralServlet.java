@@ -190,17 +190,17 @@ public final class WebInterfaceGeneralServlet extends HttpServlet {
             FormatUtils.getSizeFromBytes(mMaster.getBlockMaster().getCapacityBytes()
                 - mMaster.getBlockMaster().getUsedBytes()));
 
-    FileSystemMaster.StartupConsistencyCheckResult check =
+    FileSystemMaster.StartupConsistencyCheck check =
         mMaster.getFileSystemMaster().getStartupConsistencyCheck();
     request.setAttribute("consistencyCheckStatus", check.getStatus());
-    if (check.getStatus() == FileSystemMaster.StartupConsistencyCheckResult.Status.COMPLETE) {
+    if (check.getStatus() == FileSystemMaster.StartupConsistencyCheck.Status.COMPLETE) {
       request.setAttribute("inconsistentPaths", check.getInconsistentUris().size());
     } else {
       request.setAttribute("inconsistentPaths", 0);
     }
 
     String ufsRoot = Configuration.get(PropertyKey.UNDERFS_ADDRESS);
-    UnderFileSystem ufs = UnderFileSystem.get(ufsRoot);
+    UnderFileSystem ufs = UnderFileSystem.Factory.get(ufsRoot);
 
     long sizeBytes = ufs.getSpace(ufsRoot, UnderFileSystem.SpaceType.SPACE_TOTAL);
     if (sizeBytes >= 0) {
