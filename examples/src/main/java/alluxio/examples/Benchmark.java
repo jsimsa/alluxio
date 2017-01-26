@@ -72,7 +72,9 @@ public class Benchmark {
 
     try {
       for (int i = 0; i < numFiles; i++) {
-        fileSystem.delete(new AlluxioURI(String.format("/data-%d", i + 1)));
+        if (fileSystem.exists(new AlluxioURI(String.format("/data-%d", i + 1)))) {
+          fileSystem.delete(new AlluxioURI(String.format("/data-%d", i + 1)));
+        }
       }
       byte[] data = new byte[1024 * 1024 * 1024];
       long start = System.currentTimeMillis();
