@@ -13,7 +13,13 @@ package alluxio.util;
 
 import alluxio.Configuration;
 import alluxio.PropertyKey;
+import alluxio.exception.ExceptionMessage;
+import alluxio.security.LoginUser;
+import alluxio.security.User;
 import alluxio.security.authentication.AuthType;
+import alluxio.security.authentication.AuthenticatedClientUser;
+
+import java.io.IOException;
 
 import javax.annotation.concurrent.ThreadSafe;
 
@@ -50,5 +56,45 @@ public final class SecurityUtils {
    */
   public static boolean isAuthorizationEnabled() {
     return Configuration.getBoolean(PropertyKey.SECURITY_AUTHORIZATION_PERMISSION_ENABLED);
+  }
+
+  public static String getOwnerFromLoginModule() {
+    try {
+      return LoginUser.get().getName();
+    } catch (IOException| UnsupportedOperationException e) {
+      return "";
+    }
+  }
+
+  public static String getOwnerFromThriftClient() {
+    try {
+      User user = AuthenticatedClientUser.get();
+      if (user == null) {
+        return "";
+      }
+      return user.getName();
+    } catch (IOException e) {
+      return "";
+    }
+  }
+
+  public static String getGroupFromLoginModule() {
+    try {
+      return CommonUtils.getPrimaryGroupName(LoginUser.get().getName());
+    } catch (IOException | UnsupportedOperationException e) {
+      return "";
+    }
+  }
+
+  public static String getGroupFromThriftClient() {
+    try {
+      User user = AuthenticatedClientUser.get();
+      if (user == null) {
+        return "";
+      }
+      return CommonUtils.getPrimaryGroupName(user.getName());
+    } catch (IOException e) {
+      return "";
+    }
   }
 }

@@ -9,7 +9,7 @@
  * See the NOTICE file distributed with this work for information regarding copyright ownership.
  */
 
-package alluxio.client.file.options;
+package alluxio.worker.file.options;
 
 import alluxio.Constants;
 import alluxio.annotation.PublicApi;
@@ -51,6 +51,17 @@ public final class CompleteUfsFileOptions {
     mMode = Mode.defaults().applyFileUMask();
     // TODO(chaomin): set permission based on the alluxio file. Not needed for now since the
     // file is always created with default permission.
+  }
+
+  /**
+   * Creates a new instance of {@link CompleteUfsFileOptions} from a Thrift representation.
+   *
+   * @param options the Thrift representation to use
+   */
+  public CompleteUfsFileOptions(CompleteUfsFileTOptions options) {
+    mOwner = options.isSetOwner() ? options.getOwner() : "";
+    mGroup = options.isSetGroup() ? options.getGroup() : "";
+    mMode = new Mode(options.isSetMode() ? options.getMode() : Constants.INVALID_MODE);
   }
 
   /**
@@ -140,8 +151,9 @@ public final class CompleteUfsFileOptions {
     if (!mGroup.isEmpty()) {
       options.setGroup(mGroup);
     }
-    if (mMode != null && mMode.toShort() != Constants.INVALID_MODE) {
-      options.setMode(mMode.toShort());
+    short mode = mMode.toShort();
+    if (mode != Constants.INVALID_MODE) {
+      options.setMode(mode);
     }
     return options;
   }
