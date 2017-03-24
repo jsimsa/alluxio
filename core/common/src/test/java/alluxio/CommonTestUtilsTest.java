@@ -11,7 +11,7 @@
 
 package alluxio;
 
-import alluxio.underfs.UnderFileSystem.SpaceType;
+import alluxio.underfs.TypedUnderFileSystem.SpaceType;
 
 import junit.framework.AssertionFailedError;
 import org.junit.Assert;

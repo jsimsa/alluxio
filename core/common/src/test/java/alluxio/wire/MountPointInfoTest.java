@@ -17,6 +17,7 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -41,9 +42,9 @@ public class MountPointInfoTest {
     Assert.assertEquals(a, b);
   }
 
-  public static MountPointInfo createRandom() {
+  public static MountPointInfo createRandom() throws Exception {
     Random random = new Random();
-    String ufsUri = CommonUtils.randomAlphaNumString(random.nextInt(10));
+    URI ufsUri = new URI(CommonUtils.randomAlphaNumString(random.nextInt(10)));
     String ufsType = CommonUtils.randomAlphaNumString(random.nextInt(10));
     long ufsCapacityBytes = random.nextLong();
     long ufsUsedBytes = random.nextLong();

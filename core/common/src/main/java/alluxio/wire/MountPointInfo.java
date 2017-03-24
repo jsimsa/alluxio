@@ -11,12 +11,14 @@
 
 package alluxio.wire;
 
+import alluxio.underfs.TypedUnderFileSystem;
 import alluxio.underfs.UnderFileSystem;
 
 import com.google.common.base.Objects;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -32,7 +34,7 @@ public class MountPointInfo implements Serializable {
   private static final long UNKNOWN_CAPACITY_BYTES = -1;
   private static final long UNKNOWN_USED_BYTES = -1;
 
-  private String mUfsUri = "";
+  private URI mUfsUri;
   private String mUfsType = "";
   private long mUfsCapacityBytes = UNKNOWN_CAPACITY_BYTES;
   private long mUfsUsedBytes = UNKNOWN_USED_BYTES;
@@ -48,7 +50,7 @@ public class MountPointInfo implements Serializable {
   /**
    * @return the uri of the under filesystem
    */
-  public String getUfsUri() {
+  public URI getUfsUri() {
     return mUfsUri;
   }
 
@@ -98,7 +100,7 @@ public class MountPointInfo implements Serializable {
    * @param uri the uri of the under filesystem to use
    * @return the mount point information
    */
-  public MountPointInfo setUfsUri(String uri) {
+  public MountPointInfo setUfsUri(URI uri) {
     mUfsUri = uri;
     return this;
   }
@@ -162,9 +164,9 @@ public class MountPointInfo implements Serializable {
    *
    * @param ufsUri the under filesystem uri
    */
-  public void setUfsInfo(String ufsUri) {
+  public void setUfsInfo(URI ufsUri) {
     mUfsUri = ufsUri;
-    UnderFileSystem ufs = UnderFileSystem.Factory.get(mUfsUri);
+    TypedUnderFileSystem<URI> ufs = UnderFileSystem.Factory.get(mUfsUri);
     mUfsType = ufs.getUnderFSType();
     try {
       mUfsCapacityBytes = ufs.getSpace(mUfsUri, UnderFileSystem.SpaceType.SPACE_TOTAL);

@@ -15,6 +15,7 @@ import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -99,7 +100,7 @@ public final class UnderFileSystemRegistry {
    * @param ufsConf optional configuration object for the UFS, may be null
    * @return client for the under file system
    */
-  public static UnderFileSystem create(String path, Object ufsConf) {
+  public static TypedUnderFileSystem<URI> create(String path, Object ufsConf) {
     // Try to obtain the appropriate factory
     List<UnderFileSystemFactory> factories = findAll(path);
     if (factories.isEmpty()) {
@@ -110,7 +111,8 @@ public final class UnderFileSystemRegistry {
     for (UnderFileSystemFactory factory : factories) {
       try {
         // Use the factory to create the actual client for the Under File System
-        return new UnderFileSystemWithLogging(factory.create(path, ufsConf));
+        return new DefaultTypedUnderFileSystem<>(
+            new UnderFileSystemWithLogging((UnderFileSystem) factory.create(path, ufsConf)));
       } catch (Exception e) {
         errors.add(e);
         LOG.warn("Failed to create ufs", e);

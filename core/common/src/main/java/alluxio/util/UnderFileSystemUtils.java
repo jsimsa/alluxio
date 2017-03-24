@@ -12,6 +12,7 @@
 package alluxio.util;
 
 import alluxio.Constants;
+import alluxio.underfs.TypedUnderFileSystem;
 import alluxio.underfs.UnderFileSystem;
 import alluxio.underfs.options.DeleteOptions;
 
@@ -19,6 +20,7 @@ import com.google.common.base.Throwables;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.URI;
 
 import javax.annotation.concurrent.ThreadSafe;
 
@@ -35,8 +37,8 @@ public final class UnderFileSystemUtils {
    * @param path path to the directory
    * @throws IOException if the directory cannot be deleted
    */
-  public static void deleteDirIfExists(final String path) throws IOException {
-    UnderFileSystem ufs = UnderFileSystem.Factory.get(path);
+  public static void deleteDirIfExists(final URI path) throws IOException {
+    TypedUnderFileSystem<URI> ufs = UnderFileSystem.Factory.get(path);
 
     if (ufs.isDirectory(path)
         && !ufs.deleteDirectory(path, DeleteOptions.defaults().setRecursive(true))) {
@@ -50,8 +52,8 @@ public final class UnderFileSystemUtils {
    * @param path path to the directory
    * @throws IOException if the directory cannot be created
    */
-  public static void mkdirIfNotExists(final String path) throws IOException {
-    UnderFileSystem ufs = UnderFileSystem.Factory.get(path);
+  public static void mkdirIfNotExists(final URI path) throws IOException {
+    TypedUnderFileSystem<URI> ufs = UnderFileSystem.Factory.get(path);
 
     if (!ufs.isDirectory(path)) {
       if (!ufs.mkdirs(path)) {
@@ -66,8 +68,8 @@ public final class UnderFileSystemUtils {
    * @param path path to the file
    * @throws IOException if the file cannot be created
    */
-  public static void touch(final String path) throws IOException {
-    UnderFileSystem ufs = UnderFileSystem.Factory.get(path);
+  public static void touch(final URI path) throws IOException {
+    TypedUnderFileSystem<URI> ufs = UnderFileSystem.Factory.get(path);
     OutputStream os = ufs.create(path);
     os.close();
   }
@@ -77,8 +79,8 @@ public final class UnderFileSystemUtils {
    *
    * @param path the path to delete
    */
-  public static void deleteFileIfExists(final String path) {
-    UnderFileSystem ufs = UnderFileSystem.Factory.get(path);
+  public static void deleteFileIfExists(final URI path) {
+    TypedUnderFileSystem<URI> ufs = UnderFileSystem.Factory.get(path);
     try {
       if (ufs.isFile(path)) {
         ufs.deleteFile(path);
