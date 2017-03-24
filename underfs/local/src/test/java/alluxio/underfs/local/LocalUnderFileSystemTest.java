@@ -11,9 +11,11 @@
 
 package alluxio.underfs.local;
 
+import alluxio.underfs.TypedUnderFileSystem;
 import alluxio.underfs.UnderFileSystem;
 import alluxio.underfs.options.DeleteOptions;
 import alluxio.underfs.options.MkdirsOptions;
+import alluxio.util.URIUtils;
 import alluxio.util.io.PathUtils;
 import alluxio.util.network.NetworkAddressUtils;
 
@@ -27,27 +29,28 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URI;
 import java.util.List;
 
 /**
  * Unit tests for the {@link LocalUnderFileSystem}.
  */
 public class LocalUnderFileSystemTest {
-  private String mLocalUfsRoot;
-  private UnderFileSystem mLocalUfs;
+  private URI mLocalUfsRoot;
+  private TypedUnderFileSystem<URI> mLocalUfs;
 
   @Rule
   public TemporaryFolder mTemporaryFolder = new TemporaryFolder();
 
   @Before
-  public void before() throws IOException {
-    mLocalUfsRoot = mTemporaryFolder.getRoot().getAbsolutePath();
+  public void before() throws Exception {
+    mLocalUfsRoot = new URI(mTemporaryFolder.getRoot().getAbsolutePath());
     mLocalUfs = UnderFileSystem.Factory.get(mLocalUfsRoot);
   }
 
   @Test
-  public void exists() throws IOException {
-    String filepath = PathUtils.concatPath(mLocalUfsRoot, getUniqueFileName());
+  public void exists() throws Exception {
+    URI filepath = URIUtils.appendPath(mLocalUfsRoot, getUniqueFileName());
     mLocalUfs.create(filepath).close();
 
     Assert.assertTrue(mLocalUfs.isFile(filepath));
@@ -58,8 +61,8 @@ public class LocalUnderFileSystemTest {
   }
 
   @Test
-  public void create() throws IOException {
-    String filepath = PathUtils.concatPath(mLocalUfsRoot, getUniqueFileName());
+  public void create() throws Exception {
+    URI filepath = URIUtils.appendPath(mLocalUfsRoot, getUniqueFileName());
     OutputStream os = mLocalUfs.create(filepath);
 
     Assert.assertFalse(mLocalUfs.isFile(filepath));
@@ -73,8 +76,8 @@ public class LocalUnderFileSystemTest {
   }
 
   @Test
-  public void deleteFile() throws IOException {
-    String filepath = PathUtils.concatPath(mLocalUfsRoot, getUniqueFileName());
+  public void deleteFile() throws Exception {
+    URI filepath = URIUtils.appendPath(mLocalUfsRoot, getUniqueFileName());
     mLocalUfs.create(filepath).close();
     mLocalUfs.deleteFile(filepath);
 
@@ -85,10 +88,10 @@ public class LocalUnderFileSystemTest {
   }
 
   @Test
-  public void recursiveDelete() throws IOException {
-    String dirpath = PathUtils.concatPath(mLocalUfsRoot, getUniqueFileName());
+  public void recursiveDelete() throws Exception {
+    URI dirpath = URIUtils.appendPath(mLocalUfsRoot, getUniqueFileName());
     mLocalUfs.mkdirs(dirpath);
-    String filepath = PathUtils.concatPath(dirpath, getUniqueFileName());
+    URI filepath = URIUtils.appendPath(dirpath, getUniqueFileName());
     mLocalUfs.create(filepath).close();
     mLocalUfs.deleteDirectory(dirpath, DeleteOptions.defaults().setRecursive(true));
 
@@ -99,10 +102,10 @@ public class LocalUnderFileSystemTest {
   }
 
   @Test
-  public void nonRecursiveDelete() throws IOException {
-    String dirpath = PathUtils.concatPath(mLocalUfsRoot, getUniqueFileName());
+  public void nonRecursiveDelete() throws Exception {
+    URI dirpath = URIUtils.appendPath(mLocalUfsRoot, getUniqueFileName());
     mLocalUfs.mkdirs(dirpath);
-    String filepath = PathUtils.concatPath(dirpath, getUniqueFileName());
+    URI filepath = URIUtils.appendPath(dirpath, getUniqueFileName());
     mLocalUfs.create(filepath).close();
     mLocalUfs.deleteDirectory(dirpath, DeleteOptions.defaults().setRecursive(false));
 
@@ -113,9 +116,9 @@ public class LocalUnderFileSystemTest {
   }
 
   @Test
-  public void mkdirs() throws IOException {
-    String parentPath = PathUtils.concatPath(mLocalUfsRoot, getUniqueFileName());
-    String dirpath = PathUtils.concatPath(parentPath, getUniqueFileName());
+  public void mkdirs() throws Exception {
+    URI parentPath = URIUtils.appendPath(mLocalUfsRoot, getUniqueFileName());
+    URI dirpath = URIUtils.appendPath(parentPath, getUniqueFileName());
     mLocalUfs.mkdirs(dirpath);
 
     Assert.assertTrue(mLocalUfs.isDirectory(dirpath));
@@ -125,9 +128,9 @@ public class LocalUnderFileSystemTest {
   }
 
   @Test
-  public void mkdirsWithCreateParentEqualToFalse() throws IOException {
-    String parentPath = PathUtils.concatPath(mLocalUfsRoot, getUniqueFileName());
-    String dirpath = PathUtils.concatPath(parentPath, getUniqueFileName());
+  public void mkdirsWithCreateParentEqualToFalse() throws Exception {
+    URI parentPath = URIUtils.appendPath(mLocalUfsRoot, getUniqueFileName());
+    URI dirpath = URIUtils.appendPath(parentPath, getUniqueFileName());
     mLocalUfs.mkdirs(dirpath, MkdirsOptions.defaults().setCreateParent(false));
 
     Assert.assertFalse(mLocalUfs.isDirectory(dirpath));
@@ -137,9 +140,9 @@ public class LocalUnderFileSystemTest {
   }
 
   @Test
-  public void open() throws IOException {
+  public void open() throws Exception {
     byte[] bytes = getBytes();
-    String filepath = PathUtils.concatPath(mLocalUfsRoot, getUniqueFileName());
+    URI filepath = URIUtils.appendPath(mLocalUfsRoot, getUniqueFileName());
 
     OutputStream os = mLocalUfs.create(filepath);
     os.write(bytes);
@@ -154,9 +157,9 @@ public class LocalUnderFileSystemTest {
   }
 
   @Test
-  public void getFileLocations() throws IOException {
+  public void getFileLocations() throws Exception {
     byte[] bytes = getBytes();
-    String filepath = PathUtils.concatPath(mLocalUfsRoot, getUniqueFileName());
+    URI filepath = URIUtils.appendPath(mLocalUfsRoot, getUniqueFileName());
 
     OutputStream os = mLocalUfs.create(filepath);
     os.write(bytes);
@@ -168,26 +171,26 @@ public class LocalUnderFileSystemTest {
   }
 
   @Test
-  public void isFile() throws IOException {
-    String dirpath = PathUtils.concatPath(mLocalUfsRoot, getUniqueFileName());
+  public void isFile() throws Exception {
+    URI dirpath = URIUtils.appendPath(mLocalUfsRoot, getUniqueFileName());
     mLocalUfs.mkdirs(dirpath);
     Assert.assertFalse(mLocalUfs.isFile(dirpath));
 
-    String filepath = PathUtils.concatPath(mLocalUfsRoot, getUniqueFileName());
+    URI filepath = URIUtils.appendPath(mLocalUfsRoot, getUniqueFileName());
     mLocalUfs.create(filepath).close();
     Assert.assertTrue(mLocalUfs.isFile(filepath));
   }
 
   @Test
-  public void renameFile() throws IOException {
+  public void renameFile() throws Exception {
     byte[] bytes = getBytes();
-    String filepath1 = PathUtils.concatPath(mLocalUfsRoot, getUniqueFileName());
+    URI filepath1 = URIUtils.appendPath(mLocalUfsRoot, getUniqueFileName());
 
     OutputStream os = mLocalUfs.create(filepath1);
     os.write(bytes);
     os.close();
 
-    String filepath2 = PathUtils.concatPath(mLocalUfsRoot, getUniqueFileName());
+    URI filepath2 = URIUtils.appendPath(mLocalUfsRoot, getUniqueFileName());
     mLocalUfs.renameFile(filepath1, filepath2);
 
     InputStream is = mLocalUfs.open(filepath2);

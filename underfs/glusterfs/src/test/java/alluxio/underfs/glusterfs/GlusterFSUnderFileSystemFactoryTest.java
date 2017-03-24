@@ -13,6 +13,7 @@ package alluxio.underfs.glusterfs;
 
 import alluxio.Configuration;
 import alluxio.PropertyKey;
+import alluxio.underfs.TypedUnderFileSystem;
 import alluxio.underfs.UnderFileSystem;
 import alluxio.underfs.UnderFileSystemFactory;
 import alluxio.underfs.UnderFileSystemRegistry;
@@ -22,6 +23,8 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.net.URI;
 
 /**
  * Unit tests for {@link GlusterFSUnderFileSystem}.
@@ -44,7 +47,7 @@ public class GlusterFSUnderFileSystemFactoryTest {
   }
 
   /**
-   * Tests the {@link UnderFileSystem#create(String)} method.
+   * Tests the {@link UnderFileSystem#create} method.
    */
   @Test
   public void createGlusterFS() throws Exception {
@@ -53,8 +56,8 @@ public class GlusterFSUnderFileSystemFactoryTest {
     Assume.assumeTrue(!StringUtils.isEmpty(mMount));
     Assume.assumeTrue(!StringUtils.isEmpty(mVolume));
 
-    UnderFileSystem gfs = UnderFileSystem.Factory.get("glusterfs:///");
-    Assert.assertNotNull(gfs.create("alluxio_test"));
+    TypedUnderFileSystem<URI> gfs = UnderFileSystem.Factory.get(new URI("glusterfs:///"));
+    Assert.assertNotNull(gfs.create(new URI("alluxio_test")));
   }
 
   /**
