@@ -19,6 +19,7 @@ import alluxio.client.file.options.CheckConsistencyOptions;
 import alluxio.exception.AlluxioException;
 import alluxio.exception.FileDoesNotExistException;
 import alluxio.util.CommonUtils;
+import alluxio.util.WaitForOptions;
 
 import com.google.common.base.Function;
 import com.google.common.base.Throwables;
@@ -36,7 +37,7 @@ import javax.annotation.concurrent.ThreadSafe;
  */
 @ThreadSafe
 public final class FileSystemUtils {
-  private static final Logger LOG = LoggerFactory.getLogger(Constants.LOGGER_TYPE);
+  private static final Logger LOG = LoggerFactory.getLogger(FileSystemUtils.class);
 
   // prevent instantiation
   private FileSystemUtils() {}
@@ -155,10 +156,12 @@ public final class FileSystemUtils {
         try {
           return fs.getStatus(uri).isPersisted();
         } catch (Exception e) {
-          throw Throwables.propagate(e);
+          Throwables.propagateIfPossible(e);
+          throw new RuntimeException(e);
         }
       }
-    }, 20 * Constants.MINUTE_MS /* timeout */, Constants.SECOND_MS /* sleep interval */);
+    }, WaitForOptions.defaults().setTimeout(20 * Constants.MINUTE_MS)
+        .setInterval(Constants.SECOND_MS));
   }
 
   /**

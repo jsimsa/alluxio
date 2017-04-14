@@ -13,6 +13,7 @@ package alluxio.client.file;
 
 import alluxio.Constants;
 import alluxio.util.CommonUtils;
+import alluxio.util.WaitForOptions;
 
 import com.google.common.base.Function;
 import org.powermock.reflect.Whitebox;
@@ -24,18 +25,18 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class FileSystemWorkerClientTestUtils {
   /**
-   * Resets the {@link FileSystemWorkerClient#HEARTBEAT_CANCEL_POOL} by waiting for all the
-   * pending heartbeats.
+   * Resets the static {@link FileSystemWorkerClient} state.
    */
   public static void reset() {
+    // reset the heartbeat pool by waiting for all the pending heartbeats
     CommonUtils.waitFor("All active file system worker sessions are closed",
         new Function<Void, Boolean>() {
           @Override
           public Boolean apply(Void input) {
-            AtomicInteger numActiveSessions =
-                Whitebox.getInternalState(FileSystemWorkerClient.class, "NUM_ACTIVE_SESSIONS");
+            AtomicInteger numActiveSessions = Whitebox
+                .getInternalState(RetryHandlingFileSystemWorkerClient.class, "NUM_ACTIVE_SESSIONS");
             return numActiveSessions.intValue() == 0;
           }
-        }, Constants.MINUTE_MS);
+        }, WaitForOptions.defaults().setTimeout(Constants.MINUTE_MS));
   }
 }

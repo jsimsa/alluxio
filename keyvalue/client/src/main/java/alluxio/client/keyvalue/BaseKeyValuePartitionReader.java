@@ -11,7 +11,6 @@
 
 package alluxio.client.keyvalue;
 
-import alluxio.Constants;
 import alluxio.client.block.AlluxioBlockStore;
 import alluxio.exception.AlluxioException;
 import alluxio.util.io.BufferUtils;
@@ -19,8 +18,6 @@ import alluxio.wire.BlockInfo;
 import alluxio.wire.WorkerNetAddress;
 
 import com.google.common.base.Preconditions;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -34,13 +31,11 @@ import javax.annotation.concurrent.NotThreadSafe;
  */
 @NotThreadSafe
 final class BaseKeyValuePartitionReader implements KeyValuePartitionReader {
-  private static final Logger LOG = LoggerFactory.getLogger(Constants.LOGGER_TYPE);
-
   private KeyValueWorkerClient mClient;
   private long mBlockId;
   private boolean mClosed;
 
-  // TODO(binfan): take parition id as input
+  // TODO(binfan): take partition id as input
   /**
    * Constructs {@link BaseKeyValuePartitionReader} given a block id.
    *

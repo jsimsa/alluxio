@@ -11,7 +11,6 @@
 
 package alluxio.client.block.stream;
 
-import alluxio.Constants;
 import alluxio.client.BoundedStream;
 import alluxio.client.Cancelable;
 import alluxio.client.block.BlockWorkerClient;
@@ -22,8 +21,6 @@ import alluxio.proto.dataserver.Protocol;
 import alluxio.wire.WorkerNetAddress;
 
 import com.google.common.io.Closer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.FilterOutputStream;
 import java.io.IOException;
@@ -36,9 +33,7 @@ import javax.annotation.concurrent.NotThreadSafe;
  * {@link alluxio.client.block.AlluxioBlockStore#getOutStream(long, long, OutStreamOptions)}.
  */
 @NotThreadSafe
-public final class BlockOutStream extends FilterOutputStream implements BoundedStream, Cancelable {
-  private static final Logger LOG = LoggerFactory.getLogger(Constants.LOGGER_TYPE);
-
+public class BlockOutStream extends FilterOutputStream implements BoundedStream, Cancelable {
   private final long mBlockId;
   private final long mBlockSize;
   private final Closer mCloser;
@@ -184,7 +179,7 @@ public final class BlockOutStream extends FilterOutputStream implements BoundedS
    * @param blockWorkerClient the block worker client
    * @param options the options
    */
-  private BlockOutStream(PacketOutStream outStream, long blockId, long blockSize,
+  protected BlockOutStream(PacketOutStream outStream, long blockId, long blockSize,
       BlockWorkerClient blockWorkerClient, OutStreamOptions options) {
     super(outStream);
 

@@ -52,7 +52,7 @@ public final class FreeAndDeleteIntegrationTest {
   @Rule
   public LocalAlluxioClusterResource mLocalAlluxioClusterResource =
       new LocalAlluxioClusterResource.Builder()
-          .setProperty(PropertyKey.USER_FILE_BUFFER_BYTES, Integer.toString(USER_QUOTA_UNIT_BYTES))
+          .setProperty(PropertyKey.USER_FILE_BUFFER_BYTES, USER_QUOTA_UNIT_BYTES)
           .build();
 
   private FileSystem mFileSystem = null;
@@ -78,8 +78,8 @@ public final class FreeAndDeleteIntegrationTest {
     Assert.assertEquals(PersistenceState.PERSISTED.toString(), status.getPersistenceState());
 
     final Long blockId = status.getBlockIds().get(0);
-    BlockMaster bm =
-        mLocalAlluxioClusterResource.get().getMaster().getInternalMaster().getBlockMaster();
+    BlockMaster bm = mLocalAlluxioClusterResource.get().getMaster().getInternalMaster()
+        .getMaster(BlockMaster.class);
     BlockInfo blockInfo = bm.getBlockInfo(blockId);
     Assert.assertEquals(2, blockInfo.getLength());
     Assert.assertFalse(blockInfo.getLocations().isEmpty());

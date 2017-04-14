@@ -16,9 +16,11 @@ import alluxio.Constants;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.common.io.ByteStreams;
+import org.apache.commons.io.IOUtils;
 import org.junit.Assert;
 
 import java.io.BufferedReader;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -92,6 +94,10 @@ public final class TestCase {
     return mMethod;
   }
 
+  /**
+   * @return The URL which is created
+   * @throws Exception
+   */
   public URL createURL() throws Exception {
     StringBuilder sb = new StringBuilder();
     for (Map.Entry<String, String> parameter : mParameters.entrySet()) {
@@ -102,6 +108,11 @@ public final class TestCase {
             + "?" + sb.toString());
   }
 
+  /**
+   * @param connection the HttpURLConnection
+   * @return the String from the InputStream of HttpURLConnection
+   * @throws Exception
+   */
   public String getResponse(HttpURLConnection connection) throws Exception {
     StringBuilder sb = new StringBuilder();
     BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream()));
@@ -140,8 +151,13 @@ public final class TestCase {
     }
 
     connection.connect();
-    Assert.assertEquals(connection.getResponseMessage(), Response.Status.OK.getStatusCode(),
-        connection.getResponseCode());
+    if (connection.getResponseCode() != Response.Status.OK.getStatusCode()) {
+      InputStream errorStream = connection.getErrorStream();
+      if (errorStream != null) {
+        Assert.fail("Request failed: " + IOUtils.toString(errorStream));
+      }
+      Assert.fail("Request failed with status code " + connection.getResponseCode());
+    }
     return getResponse(connection);
   }
 

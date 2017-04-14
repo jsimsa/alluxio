@@ -78,14 +78,15 @@ public final class SetTtlCommand extends AbstractShellCommand {
   }
 
   @Override
-  public void run(CommandLine cl) throws AlluxioException, IOException {
+  public int run(CommandLine cl) throws AlluxioException, IOException {
     String[] args = cl.getArgs();
     long ttlMs = Long.parseLong(args[1]);
     Preconditions.checkArgument(ttlMs >= 0, "TTL value must be >= 0");
     AlluxioURI path = new AlluxioURI(args[0]);
     CommandUtils.setTtl(mFileSystem, path, ttlMs, mAction);
-    System.out.println("TTL of file '" + path + "' was successfully set to " + ttlMs
+    System.out.println("TTL of path '" + path + "' was successfully set to " + ttlMs
         + " milliseconds, with expiry action set to " + mAction);
+    return 0;
   }
 
   @Override

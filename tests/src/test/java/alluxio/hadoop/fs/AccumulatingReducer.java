@@ -11,8 +11,6 @@
 
 package alluxio.hadoop.fs;
 
-import alluxio.Constants;
-
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.MapReduceBase;
 import org.apache.hadoop.mapred.OutputCollector;
@@ -38,16 +36,19 @@ import java.util.Iterator;
  * <li><tt>f:</tt> - float, summ</li>
  * <li><tt>l:</tt> - long, summ</li>
  * </ul>
- *
  */
 public class AccumulatingReducer extends MapReduceBase implements Reducer<Text, Text, Text, Text> {
+  private static final Logger LOG = LoggerFactory.getLogger(AccumulatingReducer.class);
+
   static final String VALUE_TYPE_LONG = "l:";
   static final String VALUE_TYPE_FLOAT = "f:";
   static final String VALUE_TYPE_STRING = "s:";
-  private static final Logger LOG = LoggerFactory.getLogger(Constants.LOGGER_TYPE);
 
   protected String mHostname;
 
+  /**
+   * Constructor for {@link AccumulatingReducer}.
+   */
   public AccumulatingReducer() {
     try {
       mHostname = java.net.InetAddress.getLocalHost().getHostName();
@@ -57,6 +58,15 @@ public class AccumulatingReducer extends MapReduceBase implements Reducer<Text, 
     LOG.info("Starting AccumulatingReducer on " + mHostname);
   }
 
+  /**
+   * This method accumulates values based on their type.
+   *
+   * @param key the type of values
+   * @param values the values to accumulates
+   * @param output collect the result of accumulating
+   * @param reporter to report progress and update status information
+   * @throws IOException
+   */
   public void reduce(Text key, Iterator<Text> values, OutputCollector<Text, Text> output,
       Reporter reporter) throws IOException {
     String field = key.toString();

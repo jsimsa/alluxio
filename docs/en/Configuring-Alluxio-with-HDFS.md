@@ -6,11 +6,14 @@ group: Under Store
 priority: 3
 ---
 
-This guide describes how to configure Alluxio with
-[HDFS](https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-hdfs/HdfsUserGuide.html)
-as the under storage system.
+* Table of Contents
+{:toc}
 
-# Initial Setup
+This guide describes the instructions to configure
+[HDFS](https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-hdfs/HdfsUserGuide.html)
+as Alluxio's under storage system.
+
+## Initial Setup
 
 To run an Alluxio cluster on a set of machines, you must deploy Alluxio binaries to each of these
 machines. You can either
@@ -36,47 +39,66 @@ maven. For example, if you want Alluxio to work with Hadoop HDFS `2.6.0`:
 
 If everything succeeds, you should see
 `alluxio-assemblies-{{site.ALLUXIO_RELEASED_VERSION}}-jar-with-dependencies.jar` created in the
-`assembly/target` directory and this is the jar file you can use to run both Alluxio Master and Worker.
+`assembly/target` directory and this is the jar file you can use to run both Alluxio Master and
+Worker.
 
-# Configuring Alluxio
+## Configuring Alluxio
 
-To run Alluxio binary, we must setup configuration files. Create your configuration file with `bootstrapConf` command.
-For example, if you are running Alluxio on your local machine, `ALLUXIO_MASTER_HOSTNAME` should be set to `localhost`
+To run Alluxio binary, we must setup configuration files. Create your configuration file with
+`bootstrapConf` command. For example, if you are running Alluxio on your local machine,
+`ALLUXIO_MASTER_HOSTNAME` should be set to `localhost`
 
 {% include Configuring-Alluxio-with-HDFS/bootstrapConf.md %}
 
-Alternatively, you can also create the configuration file from the template and set the contents manually.
+Alternatively, you can also create the configuration file from the template and set the contents
+manually.
 
 {% include Common-Commands/copy-alluxio-env.md %}
 
-Then edit `conf/alluxio-site.properties` file to set the under storage address to the HDFS namenode address
-and the HDFS directory you want to mount to Alluxio. For example, the under storage address can be
-`hdfs://localhost:9000` if you are running the HDFS namenode locally with default port and mapping HDFS root directory to Alluxio,
-or `hdfs://localhost:9000/alluxio/data` if only the HDFS directory `/alluxio/data` is mapped to Alluxio.
+Then edit `conf/alluxio-site.properties` file to set the under storage address to the HDFS namenode
+address and the HDFS directory you want to mount to Alluxio. For example, the under storage address
+can be `hdfs://localhost:9000` if you are running the HDFS namenode locally with default port and
+mapping HDFS root directory to Alluxio, or `hdfs://localhost:9000/alluxio/data` if only the HDFS
+directory `/alluxio/data` is mapped to Alluxio.
 
 {% include Configuring-Alluxio-with-HDFS/underfs-address.md %}
 
-## Configuring Alluxio with HDFS namenode HA mode
+### Configuring Alluxio with HDFS namenode HA mode
 
-If HDFS namenodes are running in HA mode, both Alluxio servers and clients should be configured properly in order to access HDFS.
+If HDFS namenodes are running in HA mode, both Alluxio servers and clients should be configured
+properly in order to access HDFS.
 
-For Alluxio servers (masters and workers), copy `hdfs-site.xml` and `core-site.xml` from your hadoop installation into
-`${ALLUXIO_HOME}/conf`. Alternatively, you can set `alluxio.underfs.hdfs.configuration` to the hadoop property file `hdfs-site.xml`
-(or `core-site.xml`) in `conf/alluxio-site.properties` (make sure all the relative configurations are available in the file).
+For Alluxio servers (masters and workers), copy `hdfs-site.xml` and `core-site.xml` from your hadoop
+installation into `${ALLUXIO_HOME}/conf`. Alternatively, you can set
+`alluxio.underfs.hdfs.configuration` to the hadoop property file `hdfs-site.xml` (or
+`core-site.xml`) in `conf/alluxio-site.properties` (make sure all the relative configurations are
+available in the file).
 
-Then, set the under storage address to `hdfs://nameservice/` (`nameservice` is the name of HDFS service already configured
-in `core-site.xml`) if you are mapping HDFS root directory to Alluxio, or `hdfs://nameservice/alluxio/data` if only the
-HDFS directory `/alluxio/data` is mapped to Alluxio.
+Then, set the under storage address to `hdfs://nameservice/` (`nameservice` is the name of HDFS
+service already configured in `core-site.xml`) if you are mapping HDFS root directory to Alluxio, or
+`hdfs://nameservice/alluxio/data` if only the HDFS directory `/alluxio/data` is mapped to Alluxio.
 
 {% include Configuring-Alluxio-with-HDFS/underfs-address-ha.md %}
 
-Next, for Alluxio clients, `alluxio.underfs.hdfs.configuration` should also be set to the hadoop property file
-`hdfs-site.xml` (or `core-site.xml`).
+Next, for Alluxio clients, `alluxio.underfs.hdfs.configuration` should also be set to the hadoop
+property file `hdfs-site.xml` (or `core-site.xml`).
 
-# Running Alluxio Locally with HDFS
+## Configuring Permission Mapping between Alluxio and HDFS
 
-Before this step, please make sure your HDFS cluster is running and the directory mapped to Alluxio exists.
-After everything is configured, you can start up Alluxio locally to see that everything works.
+Since v1.3, Alluxio supports filesystem [user and permission checking](Security.html) by default.
+To ensure that the permission information of files/directories including user, group and mode in HDFS is consistent with Alluxio, the user to start Alluxio master and worker processes **is required** to be either case:
+
+1. [HDFS super user](http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-hdfs/HdfsPermissionsGuide.html#The_Super-User). Namely, use the same user that starts HDFS namenode process to also start Alluxio master and worker processes.
+
+2. A member of [HDFS superuser group](http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-hdfs/HdfsPermissionsGuide.html#Configuration_Parameters). Edit HDFS configuration file `hdfs-site.xml` and check the value of configuration property `dfs.permissions.superusergroup`. If this property is set with a group (e.g., "hdfs"), add the user to start Alluxio process (e.g., "alluxio") to this group ("hdfs"); if this property is not set, add a group to this property where your Alluxio running user is a member of this newly added group.
+
+Note that, the user set above is only the identity that starts Alluxio master and worker processes. Once Alluxio servers started, it is **unnecessary** to run your Alluxio client applications using this user.
+
+## Running Alluxio Locally with HDFS
+
+Before this step, please make sure your HDFS cluster is running and the directory mapped to Alluxio
+exists. After everything is configured, you can start up Alluxio locally to see that everything
+works.
 
 {% include Common-Commands/start-alluxio.md %}
 

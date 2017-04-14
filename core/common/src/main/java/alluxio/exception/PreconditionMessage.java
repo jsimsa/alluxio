@@ -53,6 +53,7 @@ public enum PreconditionMessage {
   ERR_ZK_ADDRESS_NOT_SET("Cannot get leader address from zookeeper; %s is not set"),
   FILE_TO_PERSIST_MUST_BE_COMPLETE("File being persisted must be complete"),
   FILE_WRITE_LOCATION_POLICY_UNSPECIFIED("The location policy is not specified"),
+  UFS_READ_LOCATION_POLICY_UNSPECIFIED("The UFS read location policy is not specified"),
   GCS_BUCKET_MUST_BE_SET("The %s system property must be set to use the GCSUnderStorageCluster"),
   INODE_TREE_UNINITIALIZED_IS_ROOT_ID("Cannot call isRootId() before initializeRoot()"),
   INVALID_USER_FILE_BUFFER_BYTES("Invalid \"" + PropertyKey.USER_FILE_BUFFER_BYTES + "\": %d"),
@@ -65,10 +66,11 @@ public enum PreconditionMessage {
   REMOTE_CLIENT_BUT_LOCAL_HOSTNAME(
       "Acquire Remote Worker Client cannot not be called with local hostname"),
   S3_BUCKET_MUST_BE_SET("The %s system property must be set to use the S3UnderStorageCluster"),
-  TTL_ONLY_FOR_FILE("TTL can only be set for files"),
   URI_HOST_NULL("URI hostname must not be null"),
   URI_PORT_NULL("URI port must not be null"),
   URI_KEY_VALUE_STORE_NULL("URI of key-value store must not be null"),
+  NOT_ENOUGH_BYTES_READ(
+      "Not enough bytes have been read [bytesRead: %d, bytesToRead: %d] from the UFS file: %s."),
 
   // SEMICOLON! minimize merge conflicts by putting it on its own line
   ;
