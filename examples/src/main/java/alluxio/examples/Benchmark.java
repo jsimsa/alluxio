@@ -300,12 +300,13 @@ public class Benchmark {
     @Override
     public Void call() throws Exception {
       for (int i = 0; i < mNumFiles; i++) {
+        int bytesToWrite = mBytesToWrite;
         FileOutStream os = mFileSystem
             .createFile(new AlluxioURI(String.format("%s-%d-%d", mPath, i + 1, mId)), mOptions);
-        while (mBytesToWrite > 0) {
+        while (bytesToWrite > 0) {
           try {
-            os.write(mData, 0, Math.min(mBytesToWrite, mData.length));
-            mBytesToWrite -= mData.length;
+            os.write(mData, 0, Math.min(bytesToWrite, mData.length));
+            bytesToWrite -= Math.min(bytesToWrite, mData.length);
           } catch (IOException e) {
             System.out.println(e.getMessage());
           }
