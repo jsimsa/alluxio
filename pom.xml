@@ -1122,11 +1122,11 @@
             <goals>
               <goal>exec</goal>
             </goals>
-            <configuration>
-              <executable>${build.path}/style/check_no_windows_line_endings.sh</executable>
-            </configuration>
           </execution>
         </executions>
+        <configuration>
+          <executable>${build.path}/style/check_no_windows_line_endings.sh</executable>
+        </configuration>
       </plugin>
     </plugins>
   </build>
