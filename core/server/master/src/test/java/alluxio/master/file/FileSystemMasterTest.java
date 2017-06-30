@@ -46,6 +46,8 @@ import alluxio.master.file.options.RenameOptions;
 import alluxio.master.file.options.SetAttributeOptions;
 import alluxio.master.journal.Journal;
 import alluxio.master.journal.JournalFactory;
+import alluxio.master.permission.PermissionMaster;
+import alluxio.master.permission.PermissionMasterFactory;
 import alluxio.security.GroupMappingServiceTestUtils;
 import alluxio.thrift.Command;
 import alluxio.thrift.CommandType;
@@ -117,6 +119,7 @@ public final class FileSystemMasterTest {
   private BlockMaster mBlockMaster;
   private ExecutorService mExecutorService;
   private FileSystemMaster mFileSystemMaster;
+  private PermissionMaster mPermissionMaster;
   private long mWorkerId1;
   private long mWorkerId2;
 
@@ -1870,10 +1873,12 @@ public final class FileSystemMasterTest {
     mRegistry = new MasterRegistry();
     mJournalFactory = new Journal.Factory(new URI(mJournalFolder));
     mBlockMaster = new BlockMasterFactory().create(mRegistry, mJournalFactory);
+    mPermissionMaster = new PermissionMasterFactory().create(mRegistry, mJournalFactory);
     mExecutorService = Executors
         .newFixedThreadPool(2, ThreadFactoryUtils.build("DefaultFileSystemMasterTest-%d", true));
-    mFileSystemMaster = new DefaultFileSystemMaster(mBlockMaster, mJournalFactory,
-        ExecutorServiceFactories.constantExecutorServiceFactory(mExecutorService));
+    mFileSystemMaster =
+        new DefaultFileSystemMaster(mBlockMaster, mPermissionMaster, mJournalFactory,
+            ExecutorServiceFactories.constantExecutorServiceFactory(mExecutorService));
     mRegistry.add(FileSystemMaster.class, mFileSystemMaster);
     mRegistry.start(true);
 

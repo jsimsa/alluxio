@@ -239,17 +239,6 @@ public final class InodeDirectoryTest extends AbstractInodeTest {
   }
 
   /**
-   * Tests the {@link InodeDirectory#getMode()} method.
-   */
-  @Test
-  public void permissionStatus() {
-    InodeDirectory inode2 = createInodeDirectory();
-    Assert.assertEquals(TEST_OWNER, inode2.getOwner());
-    Assert.assertEquals(TEST_GROUP, inode2.getGroup());
-    Assert.assertEquals(Mode.defaults().applyDirectoryUMask().toShort(), inode2.getMode());
-  }
-
-  /**
    * Tests the {@link InodeDirectory#generateClientFileInfo(String)} method.
    */
   @Test

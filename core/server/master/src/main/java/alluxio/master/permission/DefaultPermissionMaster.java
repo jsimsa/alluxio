@@ -1,76 +1,143 @@
-/*
- * The Alluxio Open Foundation licenses this work under the Apache License, version 2.0
- * (the "License"). You may not use this work except in compliance with the License, which is
- * available at www.apache.org/licenses/LICENSE-2.0
- *
- * This software is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied, as more fully set forth in the License.
- *
- * See the NOTICE file distributed with this work for information regarding copyright ownership.
- */
-
-package alluxio.master.file;
+package alluxio.master.permission;
 
 import alluxio.Configuration;
+import alluxio.Constants;
 import alluxio.PropertyKey;
+import alluxio.clock.Clock;
+import alluxio.clock.SystemClock;
 import alluxio.exception.AccessControlException;
 import alluxio.exception.ExceptionMessage;
 import alluxio.exception.InvalidPathException;
 import alluxio.exception.PreconditionMessage;
+import alluxio.master.AbstractMaster;
 import alluxio.master.file.meta.Inode;
-import alluxio.master.file.meta.InodeTree;
 import alluxio.master.file.meta.LockedInodePath;
+import alluxio.master.journal.JournalFactory;
+import alluxio.proto.journal.Journal;
 import alluxio.security.authentication.AuthenticatedClientUser;
 import alluxio.security.authorization.Mode;
 import alluxio.util.CommonUtils;
+import alluxio.util.executor.ExecutorServiceFactories;
+import alluxio.util.executor.ExecutorServiceFactory;
 import alluxio.util.io.PathUtils;
 
 import com.google.common.base.Preconditions;
+import org.apache.thrift.TProcessor;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
-import javax.annotation.concurrent.NotThreadSafe;
-
-/**
- * Base class to provide permission check logic.
- */
-// TODO(peis): Migrate this class to a set of static functions.
-@NotThreadSafe // TODO(jiri): make thread-safe (c.f. ALLUXIO-1664)
-public final class PermissionChecker {
-  /** The file system inode structure. */
-  private final InodeTree mInodeTree;
-
+public class DefaultPermissionMaster extends AbstractMaster implements PermissionMaster {
   /** Whether the permission check is enabled. */
   private final boolean mPermissionCheckEnabled;
+
+  /** The super user of Alluxio file system. */
+  private final String mFileSystemSuperUser;
 
   /** The super group of Alluxio file system. All users in this group have super permission. */
   private final String mFileSystemSuperGroup;
 
+  private final Map<Long, PosixPermission> mPermissions;
+
+
   /**
-   * Constructs a {@link PermissionChecker} instance for Alluxio file system.
+   * Creates a new instance of {@link DefaultPermissionMaster}.
    *
-   * @param inodeTree inode tree of the file system master
+   * @param journalFactory the factory for the journal to use for tracking master operations
    */
-  public PermissionChecker(InodeTree inodeTree) {
-    mInodeTree = Preconditions.checkNotNull(inodeTree);
+  DefaultPermissionMaster(JournalFactory journalFactory) {
+    this(journalFactory, new SystemClock(), ExecutorServiceFactories
+        .fixedThreadPoolExecutorServiceFactory(Constants.PERMISSION_MASTER_NAME, 2));
+  }
+
+  /**
+   * Creates a new instance of {@link DefaultPermissionMaster}.
+   *
+   * @param journalFactory the factory for the journal to use for tracking master operations
+   * @param clock the clock to use for determining the time
+   * @param executorServiceFactory a factory for creating the executor service to use for running
+   *        maintenance threads
+   */
+  DefaultPermissionMaster(JournalFactory journalFactory, Clock clock,
+      ExecutorServiceFactory executorServiceFactory) {
+    super(journalFactory.create(Constants.PERMISSION_MASTER_NAME), clock, executorServiceFactory);
+    mPermissions = new HashMap<>();
     mPermissionCheckEnabled =
         Configuration.getBoolean(PropertyKey.SECURITY_AUTHORIZATION_PERMISSION_ENABLED);
     mFileSystemSuperGroup =
         Configuration.get(PropertyKey.SECURITY_AUTHORIZATION_PERMISSION_SUPERGROUP);
+    mFileSystemSuperUser =
+        Configuration.get(PropertyKey.SECURITY_AUTHORIZATION_PERMISSION_SUPERUSER);
   }
 
-  /**
-   * Checks whether a user has permission to perform a specific action on the parent of the given
-   * path; if parent directory does not exist, treats the closest ancestor directory of the path as
-   * its parent and checks permission on it. This check will pass if the path is invalid, or path
-   * has no parent (e.g., root).
-   *
-   * @param bits bits that capture the action {@link Mode.Bits} by user
-   * @param inodePath the path to check permission on
-   * @throws AccessControlException if permission checking fails
-   * @throws InvalidPathException if the path is invalid
-   */
+  @Override
+  public String getName() {
+    return Constants.PERMISSION_MASTER_NAME;
+  }
+
+  @Override
+  public void processJournalEntry(Journal.JournalEntry entry) throws IOException {
+  }
+
+  @Override
+  public Iterator<Journal.JournalEntry> getJournalEntryIterator() {
+    return null;
+  }
+
+  @Override
+  public Map<String, TProcessor> getServices() {
+    return new HashMap<>();
+  }
+
+  @Override
+  public String getGroup(long fileId) {
+    return mPermissions.get(fileId).getGroup();
+  }
+
+  @Override
+  public short getMode(long fileId) {
+    return mPermissions.get(fileId).getMode();
+  }
+
+  @Override
+  public String getOwner(long fileId) {
+    return mPermissions.get(fileId).getOwner();
+  }
+
+  @Override
+  public void setGroup(long fileId, String group) {
+    PosixPermission p = mPermissions.get(fileId);
+    if (p == null) {
+      p = new PosixPermission();
+    }
+    p.setGroup(group);
+    // TODO(jiri): journal
+  }
+
+  @Override
+  public void setMode(long fileId, short mode) {
+    PosixPermission p = mPermissions.get(fileId);
+    if (p == null) {
+      p = new PosixPermission();
+    }
+    p.setMode(mode);
+    // TODO(jiri): journal
+  }
+
+  @Override
+  public void setOwner(long fileId, String owner) {
+    PosixPermission p = mPermissions.get(fileId);
+    if (p == null) {
+      p = new PosixPermission();
+    }
+    p.setOwner(owner);
+    // TODO(jiri): journal
+  }
+
+  @Override
   public void checkParentPermission(Mode.Bits bits, LockedInodePath inodePath)
       throws AccessControlException, InvalidPathException {
     if (!mPermissionCheckEnabled) {
@@ -97,15 +164,7 @@ public final class PermissionChecker {
     checkInodeList(user, groups, bits, inodePath.getUri().getPath(), inodeList, false);
   }
 
-  /**
-   * Checks whether a user has permission to perform a specific action on a path. This check will
-   * pass if the path is invalid.
-   *
-   * @param bits bits that capture the action {@link Mode.Bits} by user
-   * @param inodePath the path to check permission on
-   * @throws AccessControlException if permission checking fails
-   * @throws InvalidPathException if the path is invalid
-   */
+  @Override
   public void checkPermission(Mode.Bits bits, LockedInodePath inodePath)
       throws AccessControlException, InvalidPathException {
     if (!mPermissionCheckEnabled) {
@@ -122,12 +181,7 @@ public final class PermissionChecker {
     checkInodeList(user, groups, bits, inodePath.getUri().getPath(), inodeList, false);
   }
 
-  /**
-   * Gets the permission to access inodePath for the current client user.
-   *
-   * @param inodePath the inode path
-   * @return the permission
-   */
+  @Override
   public Mode.Bits getPermission(LockedInodePath inodePath) {
     if (!mPermissionCheckEnabled) {
       return Mode.Bits.NONE;
@@ -145,15 +199,7 @@ public final class PermissionChecker {
     }
   }
 
-  /**
-   * Checks whether a user has permission to edit the attribute of a given path.
-   *
-   * @param inodePath the path to check permission on
-   * @param superuserRequired indicates whether it requires to be the superuser
-   * @param ownerRequired indicates whether it requires to be the owner of this path
-   * @throws AccessControlException if permission checking fails
-   * @throws InvalidPathException if the path is invalid
-   */
+  @Override
   public void checkSetAttributePermission(LockedInodePath inodePath, boolean superuserRequired,
       boolean ownerRequired) throws AccessControlException, InvalidPathException {
     if (!mPermissionCheckEnabled) {
@@ -255,7 +301,7 @@ public final class PermissionChecker {
 
     Inode inode = inodeList.get(inodeList.size() - 1);
     if (checkIsOwner) {
-      if (inode == null || user.equals(inode.getOwner())) {
+      if (inode == null || user.equals(getOwner(inode.getId()))) {
         return;
       }
       throw new AccessControlException(ExceptionMessage.PERMISSION_DENIED
@@ -279,23 +325,19 @@ public final class PermissionChecker {
     if (inode == null) {
       return;
     }
-
-    short permission = inode.getMode();
-
-    if (user.equals(inode.getOwner()) && Mode.extractOwnerBits(permission).imply(bits)) {
+    long fileId = inode.getId();
+    short mode = getMode(fileId);
+    if (user.equals(getOwner(fileId)) && Mode.extractOwnerBits(mode).imply(bits)) {
       return;
     }
-
-    if (groups.contains(inode.getGroup()) && Mode.extractGroupBits(permission).imply(bits)) {
+    if (groups.contains(getGroup(fileId)) && Mode.extractGroupBits(mode).imply(bits)) {
       return;
     }
-
-    if (Mode.extractOtherBits(permission).imply(bits)) {
+    if (Mode.extractOtherBits(mode).imply(bits)) {
       return;
     }
-
-    throw new AccessControlException(ExceptionMessage.PERMISSION_DENIED
-        .getMessage(toExceptionMessage(user, bits, path, inode)));
+    throw new AccessControlException(ExceptionMessage.PERMISSION_DENIED.getMessage(
+        toExceptionMessage(user, bits, path, inode, getOwner(fileId), getGroup(fileId), mode)));
   }
 
   /**
@@ -333,11 +375,12 @@ public final class PermissionChecker {
     }
 
     Mode.Bits mode = Mode.Bits.NONE;
-    short permission = inode.getMode();
-    if (user.equals(inode.getOwner())) {
+    long fileId = inode.getId();
+    short permission = getMode(fileId);
+    if (user.equals(getOwner(fileId))) {
       mode = mode.or(Mode.extractOwnerBits(permission));
     }
-    if (groups.contains(inode.getGroup())) {
+    if (groups.contains(getGroup(fileId))) {
       mode = mode.or(Mode.extractGroupBits(permission));
     }
     mode = mode.or(Mode.extractOtherBits(permission));
@@ -345,17 +388,15 @@ public final class PermissionChecker {
   }
 
   private boolean isPrivilegedUser(String user, List<String> groups) {
-    return user.equals(mInodeTree.getRootUserName()) || groups.contains(mFileSystemSuperGroup);
+    return user.equals(mFileSystemSuperUser) || groups.contains(mFileSystemSuperGroup);
   }
 
   private static String toExceptionMessage(String user, Mode.Bits bits, String path,
-      Inode<?> inode) {
-    StringBuilder stringBuilder =
-        new StringBuilder().append("user=").append(user).append(", ").append("access=").append(bits)
-            .append(", ").append("path=").append(path).append(": ").append("failed at ")
-            .append(inode.getName().equals("") ? "/" : inode.getName()).append(", inode owner=")
-            .append(inode.getOwner()).append(", inode group=").append(inode.getGroup())
-            .append(", inode mode=").append(new Mode(inode.getMode()).toString());
-    return stringBuilder.toString();
+      Inode<?> inode, String owner, String group, short mode) {
+    return new StringBuilder().append("user=").append(user).append(", ").append("access=")
+        .append(bits).append(", ").append("path=").append(path).append(": ").append("failed at ")
+        .append(inode.getName().equals("") ? "/" : inode.getName()).append(", inode owner=")
+        .append(owner).append(", inode group=").append(group).append(", inode mode=")
+        .append(new Mode(mode)).toString();
   }
 }

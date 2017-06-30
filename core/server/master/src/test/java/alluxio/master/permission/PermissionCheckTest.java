@@ -9,7 +9,7 @@
  * See the NOTICE file distributed with this work for information regarding copyright ownership.
  */
 
-package alluxio.master.file;
+package alluxio.master.permission;
 
 import alluxio.AlluxioURI;
 import alluxio.AuthenticatedUserRule;
@@ -23,6 +23,8 @@ import alluxio.exception.FileDoesNotExistException;
 import alluxio.master.MasterRegistry;
 import alluxio.master.block.BlockMaster;
 import alluxio.master.block.BlockMasterFactory;
+import alluxio.master.file.FileSystemMaster;
+import alluxio.master.file.FileSystemMasterFactory;
 import alluxio.master.file.meta.Inode;
 import alluxio.master.file.meta.InodeDirectory;
 import alluxio.master.file.meta.InodeFile;
@@ -40,6 +42,8 @@ import alluxio.master.file.options.RenameOptions;
 import alluxio.master.file.options.SetAttributeOptions;
 import alluxio.master.journal.Journal;
 import alluxio.master.journal.JournalFactory;
+import alluxio.master.permission.PermissionMaster;
+import alluxio.master.permission.PermissionMasterFactory;
 import alluxio.security.GroupMappingServiceTestUtils;
 import alluxio.security.authorization.Mode;
 import alluxio.security.group.GroupMappingService;
@@ -75,6 +79,7 @@ import java.util.List;
  */
 public final class PermissionCheckTest {
   private static final String TEST_SUPER_GROUP = "test-supergroup";
+  private static final String TEST_SUPER_USER = "test-superuser";
 
   /*
    * The user and group mappings for testing are:
@@ -88,7 +93,8 @@ public final class PermissionCheckTest {
   private static final TestUser TEST_USER_1 = new TestUser("user1", "group1");
   private static final TestUser TEST_USER_2 = new TestUser("user2", "group2");
   private static final TestUser TEST_USER_3 = new TestUser("user3", "group1");
-  private static final TestUser TEST_USER_SUPERGROUP = new TestUser("user4", TEST_SUPER_GROUP);
+  private static final TestUser TEST_USER_SUPERGROUP =
+      new TestUser(TEST_SUPER_USER, TEST_SUPER_GROUP);
 
   /*
    * The file structure for testing is:
@@ -105,15 +111,17 @@ public final class PermissionCheckTest {
   private static final Mode TEST_FILE_MODE = new Mode((short) 0755);
 
   private MasterRegistry mRegistry;
-  private FileSystemMaster mFileSystemMaster;
   private BlockMaster mBlockMaster;
+  private PermissionMaster mPermissionMaster;
+  private FileSystemMaster mFileSystemMaster;
 
   private InodeTree mInodeTree;
 
   @Rule
   public ConfigurationRule mConfiguration = new ConfigurationRule(ImmutableMap
       .of(PropertyKey.SECURITY_GROUP_MAPPING_CLASS, FakeUserGroupsMapping.class.getName(),
-          PropertyKey.SECURITY_AUTHORIZATION_PERMISSION_SUPERGROUP, TEST_SUPER_GROUP));
+          PropertyKey.SECURITY_AUTHORIZATION_PERMISSION_SUPERGROUP, TEST_SUPER_GROUP,
+          PropertyKey.SECURITY_AUTHORIZATION_PERMISSION_SUPERUSER, TEST_SUPER_USER));
 
   @Rule
   public AuthenticatedUserRule mAuthenticatedUser =
@@ -179,13 +187,13 @@ public final class PermissionCheckTest {
     JournalFactory factory =
         new Journal.Factory(new URI(mTestFolder.newFolder().getAbsolutePath()));
     mBlockMaster = new BlockMasterFactory().create(mRegistry, factory);
+    mPermissionMaster = new PermissionMasterFactory().create(mRegistry, factory);
     mFileSystemMaster = new FileSystemMasterFactory().create(mRegistry, factory);
     mRegistry.start(true);
 
     createDirAndFileForTest();
 
     mInodeTree = Mockito.mock(InodeTree.class);
-    Mockito.when(mInodeTree.getRootUserName()).thenReturn(TEST_USER_ADMIN.getUser());
   }
 
   @After
@@ -239,8 +247,7 @@ public final class PermissionCheckTest {
         new Mode((short) 0754)));
     LockedInodePath lockedInodePath = getLockedInodePath(permissions);
     try (Closeable r = new AuthenticatedUserRule(TEST_USER_1.getUser()).toResource()) {
-      PermissionChecker checker = new PermissionChecker(mInodeTree);
-      Mode.Bits actual = checker.getPermission(lockedInodePath);
+      Mode.Bits actual = mPermissionMaster.getPermission(lockedInodePath);
       Assert.assertEquals(Mode.Bits.ALL, actual);
     }
   }
@@ -252,8 +259,7 @@ public final class PermissionCheckTest {
         new Mode((short) 0754)));
     LockedInodePath lockedInodePath = getLockedInodePath(permissions);
     try (Closeable r = new AuthenticatedUserRule(TEST_USER_3.getUser()).toResource()) {
-      PermissionChecker checker = new PermissionChecker(mInodeTree);
-      Mode.Bits actual = checker.getPermission(lockedInodePath);
+      Mode.Bits actual = mPermissionMaster.getPermission(lockedInodePath);
       Assert.assertEquals(Mode.Bits.READ_EXECUTE, actual);
     }
   }
@@ -265,8 +271,7 @@ public final class PermissionCheckTest {
         new Mode((short) 0754)));
     LockedInodePath lockedInodePath = getLockedInodePath(permissions);
     try (Closeable r  = new AuthenticatedUserRule(TEST_USER_2.getUser()).toResource()) {
-      PermissionChecker checker = new PermissionChecker(mInodeTree);
-      Mode.Bits actual = checker.getPermission(lockedInodePath);
+      Mode.Bits actual = mPermissionMaster.getPermission(lockedInodePath);
       Assert.assertEquals(Mode.Bits.READ, actual);
     }
   }

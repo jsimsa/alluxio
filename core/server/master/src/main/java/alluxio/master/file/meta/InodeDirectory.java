@@ -229,9 +229,6 @@ public final class InodeDirectory extends Inode<InodeDirectory> {
     ret.setLastModificationTimeMs(getLastModificationTimeMs());
     ret.setTtl(mTtl);
     ret.setTtlAction(mTtlAction);
-    ret.setOwner(getOwner());
-    ret.setGroup(getGroup());
-    ret.setMode(getMode());
     ret.setPersistenceState(getPersistenceState().toString());
     ret.setMountPoint(isMountPoint());
     return ret;
@@ -256,9 +253,6 @@ public final class InodeDirectory extends Inode<InodeDirectory> {
         .setPersistenceState(PersistenceState.valueOf(entry.getPersistenceState()))
         .setPinned(entry.getPinned())
         .setLastModificationTimeMs(entry.getLastModificationTimeMs(), true)
-        .setOwner(entry.getOwner())
-        .setGroup(entry.getGroup())
-        .setMode((short) entry.getMode())
         .setMountPoint(entry.getMountPoint())
         .setTtl(entry.getTtl())
         .setTtlAction(ProtobufUtils.fromProtobuf(entry.getTtlAction()))
@@ -281,9 +275,6 @@ public final class InodeDirectory extends Inode<InodeDirectory> {
         .setName(name)
         .setTtl(options.getTtl())
         .setTtlAction(options.getTtlAction())
-        .setOwner(options.getOwner())
-        .setGroup(options.getGroup())
-        .setMode(options.getMode().toShort())
         .setMountPoint(options.isMountPoint());
   }
 
@@ -301,7 +292,6 @@ public final class InodeDirectory extends Inode<InodeDirectory> {
         .setTtl(getTtl())
         .setTtlAction(ProtobufUtils.toProtobuf(getTtlAction()))
         .setDirectChildrenLoaded(isDirectChildrenLoaded())
-        .setOwner(getOwner()).setGroup(getGroup()).setMode(getMode())
         .build();
     return JournalEntry.newBuilder().setInodeDirectory(inodeDirectory).build();
   }
