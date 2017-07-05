@@ -141,6 +141,8 @@ public final class InodeTreeTest {
     Inode<?> root = getInodeByPath(mTree, new AlluxioURI("/"));
     // initializeRoot call does nothing
     mTree.initializeRoot(TEST_OWNER, TEST_GROUP, TEST_DIR_MODE);
+    Assert.assertEquals(TEST_GROUP, mPermissionMaster.getGroup(root.getId()));
+    Assert.assertEquals(TEST_DIR_MODE.toShort(), mPermissionMaster.getMode(root.getId()));
     Assert.assertEquals(TEST_OWNER, mPermissionMaster.getOwner(root.getId()));
     Inode<?> newRoot = getInodeByPath(mTree, new AlluxioURI("/"));
     Assert.assertEquals(root, newRoot);

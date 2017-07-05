@@ -17,7 +17,6 @@ import alluxio.exception.ExceptionMessage;
 import alluxio.exception.FileAlreadyCompletedException;
 import alluxio.exception.InvalidFileSizeException;
 import alluxio.exception.InvalidPathException;
-import alluxio.security.authorization.Mode;
 
 import org.junit.Assert;
 import org.junit.Rule;

@@ -163,7 +163,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 public final class DefaultFileSystemMaster extends AbstractMaster implements FileSystemMaster {
   private static final Logger LOG = LoggerFactory.getLogger(DefaultFileSystemMaster.class);
   private static final Set<Class<? extends Server>> DEPS =
-      ImmutableSet.<Class<? extends Server>>of(BlockMaster.class);
+      ImmutableSet.<Class<? extends Server>>of(BlockMaster.class, PermissionMaster.class);
 
   /**
    * Locking in DefaultFileSystemMaster
@@ -723,6 +723,10 @@ public final class DefaultFileSystemMaster extends AbstractMaster implements Fil
     AlluxioURI resolvedUri = resolution.getUri();
     fileInfo.setUfsPath(resolvedUri.toString());
     fileInfo.setMountId(resolution.getMountId());
+    long fileId = inode.getId();
+    fileInfo.setOwner(mPermissionMaster.getOwner(fileId));
+    fileInfo.setGroup(mPermissionMaster.getGroup(fileId));
+    fileInfo.setMode(mPermissionMaster.getMode(fileId));
     Metrics.FILE_INFOS_GOT.inc();
     return fileInfo;
   }

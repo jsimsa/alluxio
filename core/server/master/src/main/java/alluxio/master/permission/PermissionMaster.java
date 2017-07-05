@@ -4,6 +4,7 @@ import alluxio.exception.AccessControlException;
 import alluxio.exception.InvalidPathException;
 import alluxio.master.Master;
 import alluxio.master.file.meta.LockedInodePath;
+import alluxio.master.file.options.CreatePathOptions;
 import alluxio.security.authorization.Mode;
 
 public interface PermissionMaster extends Master {
@@ -51,6 +52,8 @@ public interface PermissionMaster extends Master {
    * @return the permission
    */
   Mode.Bits getPermission(LockedInodePath inodePath);
+
+  void create(long fileId, CreatePathOptions options);
 
   String getGroup(long fileId);
   short getMode(long fileId);

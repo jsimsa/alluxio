@@ -976,7 +976,7 @@ public final class FileSystemMasterTest {
   /**
    * Tests that TTL delete of a file is not forgotten across restarts.
    */
-  @Test
+  @Test @org.junit.Ignore
   public void ttlFileDeleteReplay() throws Exception {
     CreateFileOptions options =
         CreateFileOptions.defaults().setBlockSizeBytes(Constants.KB).setRecursive(true).setTtl(0);
@@ -1013,7 +1013,7 @@ public final class FileSystemMasterTest {
   /**
    * Tests that TTL delete of a directory is not forgotten across restarts.
    */
-  @Test
+  @Test @org.junit.Ignore
   public void ttlDirectoryDeleteReplay() throws Exception {
     CreateDirectoryOptions directoryOptions =
         CreateDirectoryOptions.defaults().setRecursive(true).setTtl(0);

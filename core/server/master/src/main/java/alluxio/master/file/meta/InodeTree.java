@@ -12,7 +12,6 @@
 package alluxio.master.file.meta;
 
 import alluxio.AlluxioURI;
-import alluxio.Constants;
 import alluxio.collections.ConcurrentHashSet;
 import alluxio.collections.FieldIndex;
 import alluxio.collections.IndexDefinition;
@@ -42,7 +41,6 @@ import alluxio.retry.RetryPolicy;
 import alluxio.security.authorization.Mode;
 import alluxio.underfs.UnderFileSystem;
 import alluxio.underfs.options.MkdirsOptions;
-import alluxio.util.SecurityUtils;
 import alluxio.util.io.PathUtils;
 import alluxio.wire.TtlAction;
 
@@ -579,6 +577,7 @@ public class InodeTree implements JournalEntryIterable {
       while (dir == null) {
         dir = InodeDirectory.create(mDirectoryIdGenerator.getNewDirectoryId(journalContext),
             currentInodeDirectory.getId(), pathComponents[k], missingDirOptions);
+        mPermissionMaster.create(dir.getId(), missingDirOptions);
         // Lock the newly created inode before subsequent operations, and add it to the lock group.
         lockList.lockWriteAndCheckNameAndParent(dir, currentInodeDirectory, pathComponents[k]);
 
@@ -651,6 +650,7 @@ public class InodeTree implements JournalEntryIterable {
           CreateDirectoryOptions directoryOptions = (CreateDirectoryOptions) options;
           lastInode = InodeDirectory.create(mDirectoryIdGenerator.getNewDirectoryId(journalContext),
               currentInodeDirectory.getId(), name, directoryOptions);
+          mPermissionMaster.create(lastInode.getId(), directoryOptions);
           // Lock the created inode before subsequent operations, and add it to the lock group.
           lockList.lockWriteAndCheckNameAndParent(lastInode, currentInodeDirectory, name);
           if (directoryOptions.isPersisted()) {
@@ -661,6 +661,7 @@ public class InodeTree implements JournalEntryIterable {
           CreateFileOptions fileOptions = (CreateFileOptions) options;
           lastInode = InodeFile.create(mContainerIdGenerator.getNewContainerId(),
               currentInodeDirectory.getId(), name, System.currentTimeMillis(), fileOptions);
+          mPermissionMaster.create(lastInode.getId(), fileOptions);
           // Lock the created inode before subsequent operations, and add it to the lock group.
           lockList.lockWriteAndCheckNameAndParent(lastInode, currentInodeDirectory, name);
           if (fileOptions.isCacheable()) {

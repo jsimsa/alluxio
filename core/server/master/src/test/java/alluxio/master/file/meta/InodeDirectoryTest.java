@@ -13,7 +13,6 @@ package alluxio.master.file.meta;
 
 import alluxio.Constants;
 import alluxio.master.file.options.CreateDirectoryOptions;
-import alluxio.security.authorization.Mode;
 import alluxio.wire.FileInfo;
 
 import com.google.common.collect.Sets;

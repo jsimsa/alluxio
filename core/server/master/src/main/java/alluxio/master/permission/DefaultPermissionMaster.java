@@ -12,6 +12,7 @@ import alluxio.exception.PreconditionMessage;
 import alluxio.master.AbstractMaster;
 import alluxio.master.file.meta.Inode;
 import alluxio.master.file.meta.LockedInodePath;
+import alluxio.master.file.options.CreatePathOptions;
 import alluxio.master.journal.JournalFactory;
 import alluxio.proto.journal.Journal;
 import alluxio.security.authentication.AuthenticatedClientUser;
@@ -22,6 +23,7 @@ import alluxio.util.executor.ExecutorServiceFactory;
 import alluxio.util.io.PathUtils;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Iterators;
 import org.apache.thrift.TProcessor;
 
 import java.io.IOException;
@@ -33,9 +35,6 @@ import java.util.Map;
 public class DefaultPermissionMaster extends AbstractMaster implements PermissionMaster {
   /** Whether the permission check is enabled. */
   private final boolean mPermissionCheckEnabled;
-
-  /** The super user of Alluxio file system. */
-  private final String mFileSystemSuperUser;
 
   /** The super group of Alluxio file system. All users in this group have super permission. */
   private final String mFileSystemSuperGroup;
@@ -69,8 +68,6 @@ public class DefaultPermissionMaster extends AbstractMaster implements Permissio
         Configuration.getBoolean(PropertyKey.SECURITY_AUTHORIZATION_PERMISSION_ENABLED);
     mFileSystemSuperGroup =
         Configuration.get(PropertyKey.SECURITY_AUTHORIZATION_PERMISSION_SUPERGROUP);
-    mFileSystemSuperUser =
-        Configuration.get(PropertyKey.SECURITY_AUTHORIZATION_PERMISSION_SUPERUSER);
   }
 
   @Override
@@ -84,7 +81,7 @@ public class DefaultPermissionMaster extends AbstractMaster implements Permissio
 
   @Override
   public Iterator<Journal.JournalEntry> getJournalEntryIterator() {
-    return null;
+    return Iterators.emptyIterator();
   }
 
   @Override
@@ -108,12 +105,22 @@ public class DefaultPermissionMaster extends AbstractMaster implements Permissio
   }
 
   @Override
+  public void create(long fileId, CreatePathOptions options) {
+    PosixPermission p = new PosixPermission();
+    p.setOwner(options.getOwner());
+    p.setGroup(options.getGroup());
+    p.setMode(options.getMode().toShort());
+    mPermissions.put(fileId, p);
+  }
+
+  @Override
   public void setGroup(long fileId, String group) {
     PosixPermission p = mPermissions.get(fileId);
     if (p == null) {
       p = new PosixPermission();
     }
     p.setGroup(group);
+    mPermissions.put(fileId, p);
     // TODO(jiri): journal
   }
 
@@ -124,6 +131,7 @@ public class DefaultPermissionMaster extends AbstractMaster implements Permissio
       p = new PosixPermission();
     }
     p.setMode(mode);
+    mPermissions.put(fileId, p);
     // TODO(jiri): journal
   }
 
@@ -134,6 +142,7 @@ public class DefaultPermissionMaster extends AbstractMaster implements Permissio
       p = new PosixPermission();
     }
     p.setOwner(owner);
+    mPermissions.put(fileId, p);
     // TODO(jiri): journal
   }
 
@@ -200,15 +209,15 @@ public class DefaultPermissionMaster extends AbstractMaster implements Permissio
   }
 
   @Override
-  public void checkSetAttributePermission(LockedInodePath inodePath, boolean superuserRequired,
+  public void checkSetAttributePermission(LockedInodePath inodePath, boolean superUserRequired,
       boolean ownerRequired) throws AccessControlException, InvalidPathException {
     if (!mPermissionCheckEnabled) {
       return;
     }
 
     // For chown, superuser is required
-    if (superuserRequired) {
-      checkSuperUser();
+    if (superUserRequired) {
+      checkSuperUser(inodePath.getInodeList());
     }
     // For chgrp or chmod, owner or superuser (supergroup) is required
     if (ownerRequired) {
@@ -247,7 +256,7 @@ public class DefaultPermissionMaster extends AbstractMaster implements Permissio
     String user = AuthenticatedClientUser.getClientUser();
     List<String> groups = getGroups(user);
 
-    if (isPrivilegedUser(user, groups)) {
+    if (isPrivilegedUser(inodeList, user, groups)) {
       return;
     }
 
@@ -259,11 +268,11 @@ public class DefaultPermissionMaster extends AbstractMaster implements Permissio
    *
    * @throws AccessControlException if the user is not a super user
    */
-  private void checkSuperUser() throws AccessControlException {
+  private void checkSuperUser(List<Inode<?>> inodeList) throws AccessControlException {
     // collects user and groups
     String user = AuthenticatedClientUser.getClientUser();
     List<String> groups = getGroups(user);
-    if (!isPrivilegedUser(user, groups)) {
+    if (!isPrivilegedUser(inodeList, user, groups)) {
       throw new AccessControlException(ExceptionMessage.PERMISSION_DENIED
           .getMessage(user + " is not a super user or in super group"));
     }
@@ -290,7 +299,7 @@ public class DefaultPermissionMaster extends AbstractMaster implements Permissio
         .checkArgument(size > 0, PreconditionMessage.EMPTY_FILE_INFO_LIST_FOR_PERMISSION_CHECK);
 
     // bypass checking permission for super user or super group of Alluxio file system.
-    if (isPrivilegedUser(user, groups)) {
+    if (isPrivilegedUser(inodeList, user, groups)) {
       return;
     }
 
@@ -356,7 +365,7 @@ public class DefaultPermissionMaster extends AbstractMaster implements Permissio
         .checkArgument(size > 0, PreconditionMessage.EMPTY_FILE_INFO_LIST_FOR_PERMISSION_CHECK);
 
     // bypass checking permission for super user or super group of Alluxio file system.
-    if (isPrivilegedUser(user, groups)) {
+    if (isPrivilegedUser(inodeList, user, groups)) {
       return Mode.Bits.ALL;
     }
 
@@ -387,8 +396,9 @@ public class DefaultPermissionMaster extends AbstractMaster implements Permissio
     return mode;
   }
 
-  private boolean isPrivilegedUser(String user, List<String> groups) {
-    return user.equals(mFileSystemSuperUser) || groups.contains(mFileSystemSuperGroup);
+  private boolean isPrivilegedUser(List<Inode<?>> inodeList, String user, List<String> groups) {
+    String root = mPermissions.get(inodeList.get(0).getId()).getOwner();
+    return user.equals(root) || groups.contains(mFileSystemSuperGroup);
   }
 
   private static String toExceptionMessage(String user, Mode.Bits bits, String path,

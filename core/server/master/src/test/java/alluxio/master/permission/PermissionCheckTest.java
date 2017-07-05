@@ -42,8 +42,6 @@ import alluxio.master.file.options.RenameOptions;
 import alluxio.master.file.options.SetAttributeOptions;
 import alluxio.master.journal.Journal;
 import alluxio.master.journal.JournalFactory;
-import alluxio.master.permission.PermissionMaster;
-import alluxio.master.permission.PermissionMasterFactory;
 import alluxio.security.GroupMappingServiceTestUtils;
 import alluxio.security.authorization.Mode;
 import alluxio.security.group.GroupMappingService;
@@ -79,7 +77,6 @@ import java.util.List;
  */
 public final class PermissionCheckTest {
   private static final String TEST_SUPER_GROUP = "test-supergroup";
-  private static final String TEST_SUPER_USER = "test-superuser";
 
   /*
    * The user and group mappings for testing are:
@@ -93,8 +90,7 @@ public final class PermissionCheckTest {
   private static final TestUser TEST_USER_1 = new TestUser("user1", "group1");
   private static final TestUser TEST_USER_2 = new TestUser("user2", "group2");
   private static final TestUser TEST_USER_3 = new TestUser("user3", "group1");
-  private static final TestUser TEST_USER_SUPERGROUP =
-      new TestUser(TEST_SUPER_USER, TEST_SUPER_GROUP);
+  private static final TestUser TEST_USER_SUPERGROUP = new TestUser("root", TEST_SUPER_GROUP);
 
   /*
    * The file structure for testing is:
@@ -120,8 +116,7 @@ public final class PermissionCheckTest {
   @Rule
   public ConfigurationRule mConfiguration = new ConfigurationRule(ImmutableMap
       .of(PropertyKey.SECURITY_GROUP_MAPPING_CLASS, FakeUserGroupsMapping.class.getName(),
-          PropertyKey.SECURITY_AUTHORIZATION_PERMISSION_SUPERGROUP, TEST_SUPER_GROUP,
-          PropertyKey.SECURITY_AUTHORIZATION_PERMISSION_SUPERUSER, TEST_SUPER_USER));
+          PropertyKey.SECURITY_AUTHORIZATION_PERMISSION_SUPERGROUP, TEST_SUPER_GROUP));
 
   @Rule
   public AuthenticatedUserRule mAuthenticatedUser =
@@ -958,9 +953,12 @@ public final class PermissionCheckTest {
       Mode mode = permission.getRight();
       uri += "/" + (i + 1);
       if (i == permissions.size() - 1) {
-        Inode<?> inode = InodeFile.create(i + 1, i, (i + 1) + "", CommonUtils.getCurrentMs(),
+        CreateFileOptions options =
             CreateFileOptions.defaults().setBlockSizeBytes(Constants.KB).setOwner(owner)
-                .setGroup(group).setMode(mode));
+                .setGroup(group).setMode(mode);
+        Inode<?> inode =
+            InodeFile.create(i + 1, i, (i + 1) + "", CommonUtils.getCurrentMs(), options);
+        mPermissionMaster.create(inode.getId(), options);
         inodes.add(inode);
       } else {
         Inode<?> inode = InodeDirectory.create(i + 1, i, (i + 1) + "",

@@ -24,7 +24,6 @@ import alluxio.master.block.BlockMaster;
 import alluxio.master.block.BlockMasterFactory;
 import alluxio.master.file.meta.Inode;
 import alluxio.master.file.meta.InodeDirectoryIdGenerator;
-import alluxio.master.file.meta.InodeFile;
 import alluxio.master.file.meta.InodeTree;
 import alluxio.master.file.meta.LockedInodePath;
 import alluxio.master.file.meta.MountTable;
@@ -62,8 +61,7 @@ import java.util.List;
  * Unit tests for {@link PermissionMaster}.
  */
 public final class PermissionMasterTest {
-  private static final String TEST_SUPER_USER = "test-supergroup";
-  private static final String TEST_SUPER_GROUP = "test-superuser";
+  private static final String TEST_SUPER_GROUP = "test-supergroup";
 
   /*
    * The user and group mappings for testing are:
@@ -77,7 +75,7 @@ public final class PermissionMasterTest {
   private static final TestUser TEST_USER_1 = new TestUser("user1", "group1");
   private static final TestUser TEST_USER_2 = new TestUser("user2", "group2");
   private static final TestUser TEST_USER_3 = new TestUser("user3", "group1");
-  private static final TestUser TEST_USER_SUPER = new TestUser(TEST_SUPER_USER, TEST_SUPER_GROUP);
+  private static final TestUser TEST_USER_SUPERGROUP = new TestUser("root", TEST_SUPER_GROUP);
 
   /*
    * The file structure for testing is:
@@ -146,7 +144,7 @@ public final class PermissionMasterTest {
       mUserGroups.put(TEST_USER_1.getUser(), TEST_USER_1.getGroup());
       mUserGroups.put(TEST_USER_2.getUser(), TEST_USER_2.getGroup());
       mUserGroups.put(TEST_USER_3.getUser(), TEST_USER_3.getGroup());
-      mUserGroups.put(TEST_USER_SUPER.getUser(), TEST_USER_SUPER.getGroup());
+      mUserGroups.put(TEST_USER_SUPERGROUP.getUser(), TEST_USER_SUPERGROUP.getGroup());
     }
 
     @Override
@@ -176,7 +174,6 @@ public final class PermissionMasterTest {
     Configuration.set(PropertyKey.SECURITY_AUTHENTICATION_TYPE, AuthType.SIMPLE.getAuthName());
     Configuration.set(PropertyKey.SECURITY_AUTHORIZATION_PERMISSION_ENABLED, "true");
     Configuration.set(PropertyKey.SECURITY_AUTHORIZATION_PERMISSION_SUPERGROUP, TEST_SUPER_GROUP);
-    Configuration.set(PropertyKey.SECURITY_AUTHORIZATION_PERMISSION_SUPERUSER, TEST_SUPER_USER);
   }
 
   @AfterClass
@@ -196,10 +193,10 @@ public final class PermissionMasterTest {
     InodeDirectoryIdGenerator directoryIdGenerator = new InodeDirectoryIdGenerator(blockMaster);
     UfsManager ufsManager = Mockito.mock(UfsManager.class);
     MountTable mountTable = new MountTable(ufsManager);
+    mRegistry.start(true);
     mInodeTree = new InodeTree(blockMaster, directoryIdGenerator, mountTable, mPermissionMaster);
     mInodeTree
         .initializeRoot(TEST_USER_ADMIN.getUser(), TEST_USER_ADMIN.getGroup(), TEST_NORMAL_MODE);
-    mRegistry.start(true);
     AuthenticatedClientUser.remove();
 
     // build file structure
@@ -275,9 +272,9 @@ public final class PermissionMasterTest {
 
   @Test
   public void fileSystemSuperGroup() throws Exception {
-    checkPermission(TEST_USER_SUPER, Mode.Bits.ALL, TEST_DIR_FILE_URI);
-    checkPermission(TEST_USER_SUPER, Mode.Bits.ALL, TEST_DIR_URI);
-    checkPermission(TEST_USER_SUPER, Mode.Bits.ALL, TEST_FILE_URI);
+    checkPermission(TEST_USER_SUPERGROUP, Mode.Bits.ALL, TEST_DIR_FILE_URI);
+    checkPermission(TEST_USER_SUPERGROUP, Mode.Bits.ALL, TEST_DIR_URI);
+    checkPermission(TEST_USER_SUPERGROUP, Mode.Bits.ALL, TEST_FILE_URI);
   }
 
   @Test
