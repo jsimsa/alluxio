@@ -9,7 +9,7 @@
  * See the NOTICE file distributed with this work for information regarding copyright ownership.
  */
 
-package alluxio.master.file;
+package alluxio.master.permission;
 
 import alluxio.AlluxioURI;
 import alluxio.AuthenticatedUserRule;
@@ -23,6 +23,8 @@ import alluxio.exception.FileDoesNotExistException;
 import alluxio.master.MasterRegistry;
 import alluxio.master.block.BlockMaster;
 import alluxio.master.block.BlockMasterFactory;
+import alluxio.master.file.FileSystemMaster;
+import alluxio.master.file.FileSystemMasterFactory;
 import alluxio.master.file.meta.Inode;
 import alluxio.master.file.meta.InodeDirectory;
 import alluxio.master.file.meta.InodeFile;
@@ -88,7 +90,7 @@ public final class PermissionCheckTest {
   private static final TestUser TEST_USER_1 = new TestUser("user1", "group1");
   private static final TestUser TEST_USER_2 = new TestUser("user2", "group2");
   private static final TestUser TEST_USER_3 = new TestUser("user3", "group1");
-  private static final TestUser TEST_USER_SUPERGROUP = new TestUser("user4", TEST_SUPER_GROUP);
+  private static final TestUser TEST_USER_SUPERGROUP = new TestUser("root", TEST_SUPER_GROUP);
 
   /*
    * The file structure for testing is:
@@ -105,8 +107,9 @@ public final class PermissionCheckTest {
   private static final Mode TEST_FILE_MODE = new Mode((short) 0755);
 
   private MasterRegistry mRegistry;
-  private FileSystemMaster mFileSystemMaster;
   private BlockMaster mBlockMaster;
+  private PermissionMaster mPermissionMaster;
+  private FileSystemMaster mFileSystemMaster;
 
   private InodeTree mInodeTree;
 
@@ -179,13 +182,13 @@ public final class PermissionCheckTest {
     JournalFactory factory =
         new Journal.Factory(new URI(mTestFolder.newFolder().getAbsolutePath()));
     mBlockMaster = new BlockMasterFactory().create(mRegistry, factory);
+    mPermissionMaster = new PermissionMasterFactory().create(mRegistry, factory);
     mFileSystemMaster = new FileSystemMasterFactory().create(mRegistry, factory);
     mRegistry.start(true);
 
     createDirAndFileForTest();
 
     mInodeTree = Mockito.mock(InodeTree.class);
-    Mockito.when(mInodeTree.getRootUserName()).thenReturn(TEST_USER_ADMIN.getUser());
   }
 
   @After
@@ -239,8 +242,7 @@ public final class PermissionCheckTest {
         new Mode((short) 0754)));
     LockedInodePath lockedInodePath = getLockedInodePath(permissions);
     try (Closeable r = new AuthenticatedUserRule(TEST_USER_1.getUser()).toResource()) {
-      PermissionChecker checker = new PermissionChecker(mInodeTree);
-      Mode.Bits actual = checker.getPermission(lockedInodePath);
+      Mode.Bits actual = mPermissionMaster.getPermission(lockedInodePath);
       Assert.assertEquals(Mode.Bits.ALL, actual);
     }
   }
@@ -252,8 +254,7 @@ public final class PermissionCheckTest {
         new Mode((short) 0754)));
     LockedInodePath lockedInodePath = getLockedInodePath(permissions);
     try (Closeable r = new AuthenticatedUserRule(TEST_USER_3.getUser()).toResource()) {
-      PermissionChecker checker = new PermissionChecker(mInodeTree);
-      Mode.Bits actual = checker.getPermission(lockedInodePath);
+      Mode.Bits actual = mPermissionMaster.getPermission(lockedInodePath);
       Assert.assertEquals(Mode.Bits.READ_EXECUTE, actual);
     }
   }
@@ -265,8 +266,7 @@ public final class PermissionCheckTest {
         new Mode((short) 0754)));
     LockedInodePath lockedInodePath = getLockedInodePath(permissions);
     try (Closeable r  = new AuthenticatedUserRule(TEST_USER_2.getUser()).toResource()) {
-      PermissionChecker checker = new PermissionChecker(mInodeTree);
-      Mode.Bits actual = checker.getPermission(lockedInodePath);
+      Mode.Bits actual = mPermissionMaster.getPermission(lockedInodePath);
       Assert.assertEquals(Mode.Bits.READ, actual);
     }
   }
@@ -953,9 +953,12 @@ public final class PermissionCheckTest {
       Mode mode = permission.getRight();
       uri += "/" + (i + 1);
       if (i == permissions.size() - 1) {
-        Inode<?> inode = InodeFile.create(i + 1, i, (i + 1) + "", CommonUtils.getCurrentMs(),
+        CreateFileOptions options =
             CreateFileOptions.defaults().setBlockSizeBytes(Constants.KB).setOwner(owner)
-                .setGroup(group).setMode(mode));
+                .setGroup(group).setMode(mode);
+        Inode<?> inode =
+            InodeFile.create(i + 1, i, (i + 1) + "", CommonUtils.getCurrentMs(), options);
+        mPermissionMaster.create(inode.getId(), options);
         inodes.add(inode);
       } else {
         Inode<?> inode = InodeDirectory.create(i + 1, i, (i + 1) + "",

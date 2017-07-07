@@ -44,27 +44,20 @@ public abstract class Inode<T> implements JournalEntryRepresentable {
   private PersistenceState mPersistenceState;
   private boolean mPinned;
 
-  private String mOwner;
-  private String mGroup;
-  private short mMode;
-
   private final ReentrantReadWriteLock mLock;
 
   protected Inode(long id, boolean isDirectory) {
     mCreationTimeMs = System.currentTimeMillis();
     mDeleted = false;
     mDirectory = isDirectory;
-    mGroup = "";
     mId = id;
     mTtl = Constants.NO_TTL;
     mTtlAction = TtlAction.DELETE;
     mLastModificationTimeMs = mCreationTimeMs;
     mName = null;
     mParentId = InodeTree.NO_PARENT;
-    mMode = Constants.INVALID_MODE;
     mPersistenceState = PersistenceState.NOT_PERSISTED;
     mPinned = false;
-    mOwner = "";
     mLock = new ReentrantReadWriteLock();
   }
 
@@ -73,13 +66,6 @@ public abstract class Inode<T> implements JournalEntryRepresentable {
    */
   public long getCreationTimeMs() {
     return mCreationTimeMs;
-  }
-
-  /**
-   * @return the group of the inode
-   */
-  public String getGroup() {
-    return mGroup;
   }
 
   /**
@@ -118,13 +104,6 @@ public abstract class Inode<T> implements JournalEntryRepresentable {
   }
 
   /**
-   * @return the mode of the inode
-   */
-  public short getMode() {
-    return mMode;
-  }
-
-  /**
    * @return the {@link PersistenceState} of the inode
    */
   public PersistenceState getPersistenceState() {
@@ -153,13 +132,6 @@ public abstract class Inode<T> implements JournalEntryRepresentable {
    */
   public long getParentId() {
     return mParentId;
-  }
-
-  /**
-   * @return the owner of the inode
-   */
-  public String getOwner() {
-    return mOwner;
   }
 
   /**
@@ -212,15 +184,6 @@ public abstract class Inode<T> implements JournalEntryRepresentable {
    */
   public T setDeleted(boolean deleted) {
     mDeleted = deleted;
-    return getThis();
-  }
-
-  /**
-   * @param group the group of the inode
-   * @return the updated object
-   */
-  public T setGroup(String group) {
-    mGroup = group;
     return getThis();
   }
 
@@ -301,24 +264,6 @@ public abstract class Inode<T> implements JournalEntryRepresentable {
    */
   public T setPinned(boolean pinned) {
     mPinned = pinned;
-    return getThis();
-  }
-
-  /**
-   * @param owner the owner name of the inode
-   * @return the updated object
-   */
-  public T setOwner(String owner) {
-    mOwner = owner;
-    return getThis();
-  }
-
-  /**
-   * @param mode the mode of the inode
-   * @return the updated object
-   */
-  public T setMode(short mode) {
-    mMode = mode;
     return getThis();
   }
 
@@ -486,7 +431,6 @@ public abstract class Inode<T> implements JournalEntryRepresentable {
         .add("creationTimeMs", mCreationTimeMs).add("pinned", mPinned).add("deleted", mDeleted)
         .add("ttl", mTtl).add("ttlAction", mTtlAction)
         .add("directory", mDirectory).add("persistenceState", mPersistenceState)
-        .add("lastModificationTimeMs", mLastModificationTimeMs).add("owner", mOwner)
-        .add("group", mGroup).add("permission", mMode);
+        .add("lastModificationTimeMs", mLastModificationTimeMs);
   }
 }

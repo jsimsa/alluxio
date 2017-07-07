@@ -82,9 +82,6 @@ public final class InodeFile extends Inode<InodeFile> {
     ret.setLastModificationTimeMs(getLastModificationTimeMs());
     ret.setTtl(mTtl);
     ret.setTtlAction(mTtlAction);
-    ret.setOwner(getOwner());
-    ret.setGroup(getGroup());
-    ret.setMode(getMode());
     ret.setPersistenceState(getPersistenceState().toString());
     ret.setMountPoint(false);
     return ret;
@@ -275,10 +272,7 @@ public final class InodeFile extends Inode<InodeFile> {
         .setPersistenceState(PersistenceState.valueOf(entry.getPersistenceState()))
         .setPinned(entry.getPinned())
         .setTtl(entry.getTtl())
-        .setTtlAction((ProtobufUtils.fromProtobuf(entry.getTtlAction())))
-        .setOwner(entry.getOwner())
-        .setGroup(entry.getGroup())
-        .setMode((short) entry.getMode());
+        .setTtlAction((ProtobufUtils.fromProtobuf(entry.getTtlAction())));
   }
 
   /**
@@ -300,9 +294,6 @@ public final class InodeFile extends Inode<InodeFile> {
         .setTtl(options.getTtl())
         .setTtlAction(options.getTtlAction())
         .setParentId(parentId)
-        .setOwner(options.getOwner())
-        .setGroup(options.getGroup())
-        .setMode(options.getMode().toShort())
         .setPersistenceState(options.isPersisted() ? PersistenceState.PERSISTED
             : PersistenceState.NOT_PERSISTED);
 
@@ -316,13 +307,10 @@ public final class InodeFile extends Inode<InodeFile> {
         .setCacheable(isCacheable())
         .setCompleted(isCompleted())
         .setCreationTimeMs(getCreationTimeMs())
-        .setGroup(getGroup())
         .setId(getId())
         .setLastModificationTimeMs(getLastModificationTimeMs())
         .setLength(getLength())
-        .setMode(getMode())
         .setName(getName())
-        .setOwner(getOwner())
         .setParentId(getParentId())
         .setPersistenceState(getPersistenceState().name())
         .setPinned(isPinned())

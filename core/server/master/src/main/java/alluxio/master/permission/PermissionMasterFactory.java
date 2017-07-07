@@ -9,14 +9,13 @@
  * See the NOTICE file distributed with this work for information regarding copyright ownership.
  */
 
-package alluxio.master.file;
+package alluxio.master.permission;
 
 import alluxio.Constants;
 import alluxio.master.MasterFactory;
 import alluxio.master.MasterRegistry;
-import alluxio.master.block.BlockMaster;
+import alluxio.master.file.FileSystemMaster;
 import alluxio.master.journal.JournalFactory;
-import alluxio.master.permission.PermissionMaster;
 
 import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
@@ -28,13 +27,13 @@ import javax.annotation.concurrent.ThreadSafe;
  * Factory to create a {@link FileSystemMaster} instance.
  */
 @ThreadSafe
-public final class FileSystemMasterFactory implements MasterFactory {
-  private static final Logger LOG = LoggerFactory.getLogger(FileSystemMasterFactory.class);
+public final class PermissionMasterFactory implements MasterFactory {
+  private static final Logger LOG = LoggerFactory.getLogger(PermissionMasterFactory.class);
 
   /**
-   * Constructs a new {@link FileSystemMasterFactory}.
+   * Constructs a new {@link PermissionMasterFactory}.
    */
-  public FileSystemMasterFactory() {}
+  public PermissionMasterFactory() {}
 
   @Override
   public boolean isEnabled() {
@@ -43,18 +42,15 @@ public final class FileSystemMasterFactory implements MasterFactory {
 
   @Override
   public String getName() {
-    return Constants.FILE_SYSTEM_MASTER_NAME;
+    return Constants.PERMISSION_MASTER_NAME;
   }
 
   @Override
-  public FileSystemMaster create(MasterRegistry registry, JournalFactory journalFactory) {
+  public PermissionMaster create(MasterRegistry registry, JournalFactory journalFactory) {
     Preconditions.checkArgument(journalFactory != null, "journal factory may not be null");
-    LOG.info("Creating {} ", FileSystemMaster.class.getName());
-    BlockMaster blockMaster = registry.get(BlockMaster.class);
-    PermissionMaster permissionMaster = registry.get(PermissionMaster.class);
-    FileSystemMaster fileSystemMaster =
-        new DefaultFileSystemMaster(blockMaster, permissionMaster, journalFactory);
-    registry.add(FileSystemMaster.class, fileSystemMaster);
-    return fileSystemMaster;
+    LOG.info("Creating {} ", PermissionMaster.class.getName());
+    PermissionMaster permissionMaster = new DefaultPermissionMaster(journalFactory);
+    registry.add(PermissionMaster.class, permissionMaster);
+    return permissionMaster;
   }
 }

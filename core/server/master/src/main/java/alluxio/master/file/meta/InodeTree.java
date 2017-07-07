@@ -12,7 +12,6 @@
 package alluxio.master.file.meta;
 
 import alluxio.AlluxioURI;
-import alluxio.Constants;
 import alluxio.collections.ConcurrentHashSet;
 import alluxio.collections.FieldIndex;
 import alluxio.collections.IndexDefinition;
@@ -32,6 +31,7 @@ import alluxio.master.file.options.DeleteOptions;
 import alluxio.master.journal.JournalContext;
 import alluxio.master.journal.JournalEntryIterable;
 import alluxio.master.journal.NoopJournalContext;
+import alluxio.master.permission.PermissionMaster;
 import alluxio.proto.journal.File;
 import alluxio.proto.journal.File.InodeDirectoryEntry;
 import alluxio.proto.journal.File.InodeFileEntry;
@@ -41,7 +41,6 @@ import alluxio.retry.RetryPolicy;
 import alluxio.security.authorization.Mode;
 import alluxio.underfs.UnderFileSystem;
 import alluxio.underfs.options.MkdirsOptions;
-import alluxio.util.SecurityUtils;
 import alluxio.util.io.PathUtils;
 import alluxio.wire.TtlAction;
 
@@ -109,6 +108,9 @@ public class InodeTree implements JournalEntryIterable {
   /** Mount table manages the file system mount points. */
   private final MountTable mMountTable;
 
+  /** A handle to the permission master. */
+  private final PermissionMaster mPermissionMaster;
+
   /** Use UniqueFieldIndex directly for ID index rather than using IndexedSet. */
   private final FieldIndex<Inode<?>> mInodes = new UniqueFieldIndex<>(ID_INDEX);
   /** A set of inode ids representing pinned inode files. */
@@ -136,12 +138,15 @@ public class InodeTree implements JournalEntryIterable {
    * @param containerIdGenerator the container id generator to use to get new container ids
    * @param directoryIdGenerator the directory id generator to use to get new directory ids
    * @param mountTable the mount table to manage the file system mount points
+   * @param permissionMaster the permission master handle
    */
   public InodeTree(ContainerIdGenerable containerIdGenerator,
-      InodeDirectoryIdGenerator directoryIdGenerator, MountTable mountTable) {
+      InodeDirectoryIdGenerator directoryIdGenerator, MountTable mountTable,
+      PermissionMaster permissionMaster) {
     mContainerIdGenerator = containerIdGenerator;
     mDirectoryIdGenerator = directoryIdGenerator;
     mMountTable = mountTable;
+    mPermissionMaster = permissionMaster;
   }
 
   /**
@@ -155,21 +160,14 @@ public class InodeTree implements JournalEntryIterable {
     if (mRoot == null) {
       mRoot = InodeDirectory
           .create(mDirectoryIdGenerator.getNewDirectoryId(), NO_PARENT, ROOT_INODE_NAME,
-              CreateDirectoryOptions.defaults().setOwner(owner).setGroup(group).setMode(mode));
+              CreateDirectoryOptions.defaults());
+      mPermissionMaster.setGroup(mRoot.getId(), group);
+      mPermissionMaster.setMode(mRoot.getId(), mode.toShort());
+      mPermissionMaster.setOwner(mRoot.getId(), owner);
       mRoot.setPersistenceState(PersistenceState.PERSISTED);
       mInodes.add(mRoot);
       mCachedInode = mRoot;
     }
-  }
-
-  /**
-   * @return username of root of inode tree, null if the inode tree is not initialized
-   */
-  public String getRootUserName() {
-    if (mRoot == null) {
-      return null;
-    }
-    return mRoot.getOwner();
   }
 
   /**
@@ -579,6 +577,7 @@ public class InodeTree implements JournalEntryIterable {
       while (dir == null) {
         dir = InodeDirectory.create(mDirectoryIdGenerator.getNewDirectoryId(journalContext),
             currentInodeDirectory.getId(), pathComponents[k], missingDirOptions);
+        mPermissionMaster.create(dir.getId(), missingDirOptions);
         // Lock the newly created inode before subsequent operations, and add it to the lock group.
         lockList.lockWriteAndCheckNameAndParent(dir, currentInodeDirectory, pathComponents[k]);
 
@@ -651,6 +650,7 @@ public class InodeTree implements JournalEntryIterable {
           CreateDirectoryOptions directoryOptions = (CreateDirectoryOptions) options;
           lastInode = InodeDirectory.create(mDirectoryIdGenerator.getNewDirectoryId(journalContext),
               currentInodeDirectory.getId(), name, directoryOptions);
+          mPermissionMaster.create(lastInode.getId(), directoryOptions);
           // Lock the created inode before subsequent operations, and add it to the lock group.
           lockList.lockWriteAndCheckNameAndParent(lastInode, currentInodeDirectory, name);
           if (directoryOptions.isPersisted()) {
@@ -661,6 +661,7 @@ public class InodeTree implements JournalEntryIterable {
           CreateFileOptions fileOptions = (CreateFileOptions) options;
           lastInode = InodeFile.create(mContainerIdGenerator.getNewContainerId(),
               currentInodeDirectory.getId(), name, System.currentTimeMillis(), fileOptions);
+          mPermissionMaster.create(lastInode.getId(), fileOptions);
           // Lock the created inode before subsequent operations, and add it to the lock group.
           lockList.lockWriteAndCheckNameAndParent(lastInode, currentInodeDirectory, name);
           if (fileOptions.isCacheable()) {
@@ -929,24 +930,9 @@ public class InodeTree implements JournalEntryIterable {
     InodeDirectory directory = InodeDirectory.fromJournalEntry(entry);
     if (directory.getName().equals(ROOT_INODE_NAME)) {
       // This is the root inode. Clear all the state, and set the root.
-      // For backwards-compatibility:
-      // Empty owner in journal entry indicates that previous journal has no security. In this
-      // case, the journal is allowed to be applied to the new inode with security turned on.
-      if (SecurityUtils.isSecurityEnabled() && mRoot != null && !directory.getOwner().isEmpty()
-          && !mRoot.getOwner().equals(directory.getOwner())) {
-        // user is not the owner of journal root entry
-        throw new AccessControlException(
-            ExceptionMessage.PERMISSION_DENIED.getMessage("Unauthorized user on root"));
-      }
       mInodes.clear();
       mPinnedInodeFileIds.clear();
       mRoot = directory;
-      // If journal entry has no security enabled, change the replayed inode permission to be 0777
-      // for backwards-compatibility.
-      if (SecurityUtils.isSecurityEnabled() && mRoot != null && mRoot.getOwner().isEmpty() && mRoot
-          .getGroup().isEmpty()) {
-        mRoot.setMode(Constants.DEFAULT_FILE_SYSTEM_MODE);
-      }
       mCachedInode = mRoot;
       mInodes.add(mRoot);
     } else {
@@ -968,12 +954,6 @@ public class InodeTree implements JournalEntryIterable {
     }
     parentDirectory.addChild(inode);
     mInodes.add(inode);
-    // If journal entry has no security enabled, change the replayed inode permission to be 0777
-    // for backwards-compatibility.
-    if (SecurityUtils.isSecurityEnabled() && inode != null && inode.getOwner().isEmpty()
-        && inode.getGroup().isEmpty()) {
-      inode.setMode(Constants.DEFAULT_FILE_SYSTEM_MODE);
-    }
     // Update indexes.
     if (inode.isFile() && inode.isPinned()) {
       mPinnedInodeFileIds.add(inode.getId());
@@ -1003,9 +983,10 @@ public class InodeTree implements JournalEntryIterable {
           MountTable.Resolution resolution = mMountTable.resolve(uri);
           String ufsUri = resolution.getUri().toString();
           UnderFileSystem ufs = resolution.getUfs();
-          MkdirsOptions mkdirsOptions =
-              MkdirsOptions.defaults().setCreateParent(false).setOwner(dir.getOwner())
-                  .setGroup(dir.getGroup()).setMode(new Mode(dir.getMode()));
+          MkdirsOptions mkdirsOptions = MkdirsOptions.defaults().setCreateParent(false)
+              .setOwner(mPermissionMaster.getOwner(dir.getId()))
+              .setGroup(mPermissionMaster.getGroup(dir.getId()))
+              .setMode(new Mode(mPermissionMaster.getMode(dir.getId())));
           ufs.mkdirs(ufsUri, mkdirsOptions);
           dir.setPersistenceState(PersistenceState.PERSISTED);
 

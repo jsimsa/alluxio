@@ -29,8 +29,11 @@ import alluxio.master.file.options.CreateFileOptions;
 import alluxio.master.file.options.CreatePathOptions;
 import alluxio.master.file.options.DeleteOptions;
 import alluxio.master.journal.Journal;
+import alluxio.master.journal.JournalContext;
 import alluxio.master.journal.JournalFactory;
 import alluxio.master.journal.NoopJournalContext;
+import alluxio.master.permission.PermissionMaster;
+import alluxio.master.permission.PermissionMasterFactory;
 import alluxio.security.authorization.Mode;
 import alluxio.underfs.UfsManager;
 import alluxio.util.CommonUtils;
@@ -72,6 +75,7 @@ public final class InodeTreeTest {
   private static CreateDirectoryOptions sNestedDirectoryOptions;
   private InodeTree mTree;
   private MasterRegistry mRegistry;
+  private PermissionMaster mPermissionMaster;
 
   /** Rule to create a new temporary folder during each test. */
   @Rule
@@ -94,7 +98,8 @@ public final class InodeTreeTest {
     InodeDirectoryIdGenerator directoryIdGenerator = new InodeDirectoryIdGenerator(blockMaster);
     UfsManager ufsManager = Mockito.mock(UfsManager.class);
     MountTable mountTable = new MountTable(ufsManager);
-    mTree = new InodeTree(blockMaster, directoryIdGenerator, mountTable);
+    mPermissionMaster = new PermissionMasterFactory().create(mRegistry, factory);
+    mTree = new InodeTree(blockMaster, directoryIdGenerator, mountTable, mPermissionMaster);
 
     mRegistry.start(true);
 
@@ -136,14 +141,16 @@ public final class InodeTreeTest {
     Inode<?> root = getInodeByPath(mTree, new AlluxioURI("/"));
     // initializeRoot call does nothing
     mTree.initializeRoot(TEST_OWNER, TEST_GROUP, TEST_DIR_MODE);
-    Assert.assertEquals(TEST_OWNER, root.getOwner());
+    Assert.assertEquals(TEST_GROUP, mPermissionMaster.getGroup(root.getId()));
+    Assert.assertEquals(TEST_DIR_MODE.toShort(), mPermissionMaster.getMode(root.getId()));
+    Assert.assertEquals(TEST_OWNER, mPermissionMaster.getOwner(root.getId()));
     Inode<?> newRoot = getInodeByPath(mTree, new AlluxioURI("/"));
     Assert.assertEquals(root, newRoot);
   }
 
   /**
-   * Tests the {@link InodeTree#createPath(LockedInodePath, CreatePathOptions)} method for creating
-   * directories.
+   * Tests the {@link InodeTree#createPath(LockedInodePath, CreatePathOptions, JournalContext)}
+   * method for creating directories.
    */
   @Test
   public void createDirectory() throws Exception {
@@ -153,9 +160,9 @@ public final class InodeTreeTest {
     Inode<?> test = getInodeByPath(mTree, TEST_URI);
     Assert.assertEquals(TEST_PATH, test.getName());
     Assert.assertTrue(test.isDirectory());
-    Assert.assertEquals("user1", test.getOwner());
-    Assert.assertEquals("group1", test.getGroup());
-    Assert.assertEquals(TEST_DIR_MODE.toShort(), test.getMode());
+    Assert.assertEquals("user1", mPermissionMaster.getOwner(test.getId()));
+    Assert.assertEquals("group1", mPermissionMaster.getGroup(test.getId()));
+    Assert.assertEquals(TEST_DIR_MODE.toShort(), mPermissionMaster.getMode(test.getId()));
 
     // create nested directory
     createPath(mTree, NESTED_URI, sNestedDirectoryOptions);
@@ -164,9 +171,9 @@ public final class InodeTreeTest {
     Assert.assertEquals(TEST_PATH, nested.getName());
     Assert.assertEquals(2, nested.getParentId());
     Assert.assertTrue(test.isDirectory());
-    Assert.assertEquals("user1", test.getOwner());
-    Assert.assertEquals("group1", test.getGroup());
-    Assert.assertEquals(TEST_DIR_MODE.toShort(), test.getMode());
+    Assert.assertEquals("user1", mPermissionMaster.getOwner(test.getId()));
+    Assert.assertEquals("group1", mPermissionMaster.getGroup(test.getId()));
+    Assert.assertEquals(TEST_DIR_MODE.toShort(), mPermissionMaster.getMode(test.getId()));
   }
 
   /**
@@ -209,8 +216,8 @@ public final class InodeTreeTest {
   }
 
   /**
-   * Tests the {@link InodeTree#createPath(LockedInodePath, CreatePathOptions)} method for
-   * creating a file.
+   * Tests the {@link InodeTree#createPath(LockedInodePath, CreatePathOptions, JournalContext)}
+   * method for creating a file.
    */
   @Test
   public void createFile() throws Exception {
@@ -220,13 +227,14 @@ public final class InodeTreeTest {
     Assert.assertEquals("file", nestedFile.getName());
     Assert.assertEquals(2, nestedFile.getParentId());
     Assert.assertTrue(nestedFile.isFile());
-    Assert.assertEquals("user1", nestedFile.getOwner());
-    Assert.assertEquals("group1", nestedFile.getGroup());
-    Assert.assertEquals(TEST_FILE_MODE.toShort(), nestedFile.getMode());
+    Assert.assertEquals("user1", mPermissionMaster.getOwner(nestedFile.getId()));
+    Assert.assertEquals("group1", mPermissionMaster.getGroup(nestedFile.getId()));
+    Assert.assertEquals(TEST_FILE_MODE.toShort(), mPermissionMaster.getMode(nestedFile.getId()));
   }
 
   /**
-   * Tests the {@link InodeTree#createPath(LockedInodePath, CreatePathOptions)} method.
+   * Tests the {@link InodeTree#createPath(LockedInodePath, CreatePathOptions, JournalContext)}
+   * method.
    */
   @Test
   public void createPathTest() throws Exception {
